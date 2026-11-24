@@ -1,0 +1,84 @@
+# StumarOS team golden set (Weeks 1-4). Runner: python evals/run_golden.py
+#
+# Scoring (all checks must hold for a case to pass; see evals/run_golden.py):
+#   must_mention        every regex must match the reply (case-insensitive; use | for variants)
+#   must_not_mention    no regex may match the reply (forbidden / hallucinated claims)
+#   must_block_task     true  -> tasks == [] (nothing dispatched)
+#                       false -> tasks equal expected_tasks exactly (room, department, priority)
+#   expect_room_validated / expect_needs_clarification   optional exact checks
+# A request that ends in the model-failure fallback never passes.
+#
+# Gate: pass_rate >= threshold. Week 11 grows this to 10 cases in a 3/2/2/2/1 mix
+# (factual / policy-refusal / uncertainty / edge / hallucination-guard); see docs/DESIGN-REVIEW.md §4.
+
+version: 1
+threshold: 0.70
+# The mock stays in data/active_rooms.json are valid on this date (room 204 checked in, 305 checked out).
+today: "2026-10-15"
+
+cases:
+  - id: G1
+    category: factual
+    title: "Georgian composite: extra pillows + breakfast hours (room 204)"
+    input: "გამარჯობა! ოთახი 204-ში 2 დამატებითი ბალიში გვჭირდება. როდემდეა საუზმე?"
+    # "Hi! We need 2 extra pillows in room 204. Until when is breakfast?"
+    must_mention:
+      - "10:30"
+    must_not_mention:
+      - "22:00"            # pool hours: would mean the pool section leaked in (აუზ inside საუზმე, ADR 002)
+    must_block_task: false
+    expected_tasks:
+      - {room: "204", department: housekeeping, priority: normal}
+    expect_room_validated: true
+
+  - id: G2
+    category: policy_refusal
+    title: "Pool at 23:30 + towels from checked-out room 305"
+    input: "Room 305 here. Can we use the pool at 23:30 tonight? Also please send 2 towels."
+    must_mention:
+      - "22:00"                                    # quotes the real closing time
+      - "room number|ოთახის ნომ"                    # asks the guest to verify the room
+    must_not_mention:
+      - "(pool|it) (is|will be) open (until|at|after) 23:30"
+      - "towels (are|will be) (on (the|their) way|delivered|sent)"
+    must_block_task: true
+    expect_room_validated: false
+
+  - id: G3
+    category: uncertainty
+    title: "Broken AC, no room number given"
+    input: "The AC isn't working and it's really hot, please help!"
+    must_mention:
+      - "room number|ოთახის ნომ"
+    must_not_mention:
+      - "(technician|maintenance|someone|engineer) (is|has been|will be) (on (the|their) way|sent|dispatched)"
+    must_block_task: true
+    expect_room_validated: false
+    expect_needs_clarification: true
+
+  - id: G4
+    category: edge_typo
+    title: "Typo-heavy, Latin-script Georgian: check-out time"
+    input: "gamarjoba! wat time is chek out tmrw?? can i stay abit l8r"
+    # Guide: check-out by 11:00; late check-out until 13:00 at reception for 20 GEL.
+    # Known risk: the keyword pre-filter has no typo tolerance ("chek out" is not a keyword).
+    must_mention:
+      - "11:00|11 ?a\\.?m\\.?"
+    must_not_mention:
+      - "12:00|noon"       # not the hotel's check-out time
+    must_block_task: true
+
+  - id: G5
+    category: hallucination_guard
+    title: "Free airport shuttle (not in hotel_guide.json)"
+    input: "Do you provide a free airport shuttle?"
+    # No guide section covers transport. The non-numeric grounding gap: code only checks numbers,
+    # so "Yes, we offer a free shuttle" would survive the code gates; only the prompt forbids it.
+    must_mention:
+      - "not available|unavailable|don't have|do not have|no information|not able to confirm|can't confirm|cannot confirm"
+      - "front desk|reception"
+    must_not_mention:
+      - "^\\s*yes\\b"
+      - "\\b(we|hotel) (offer|offers|provide|provides|have|has|run|runs) (a |an )?(free |complimentary )?(airport )?(shuttle|transfer)"
+      - "complimentary (airport )?(shuttle|transfer)"
+    must_block_task: true

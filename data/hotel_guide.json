@@ -1,0 +1,23 @@
+{
+  "hotel": "StumarOS demo hotel (mock data for HW1)",
+  "sections": [
+    {"id": "breakfast", "keywords": ["breakfast", "brunch", "café", "cafe", "საუზმ"],
+     "text": "Breakfast is served 07:00-10:30 daily in the ground-floor café and is included in all room rates."},
+    {"id": "pool", "keywords": ["pool", "swim", "swimming", "rooftop", "აუზ", "ცურვ"],
+     "text": "The rooftop pool is open 08:00-22:00. It is closed outside these hours with no exceptions. No glassware; children under 12 must be supervised."},
+    {"id": "checkout", "keywords": ["check-out", "checkout", "check out", "late check", "check-in", "checkin", "check in", "გასვლ", "შესვლ"],
+     "text": "Check-in is from 14:00 and check-out is by 11:00. Late check-out until 13:00 can be requested at reception for 20 GEL, subject to availability. Departures after 13:00 are charged as an extra night."},
+    {"id": "wifi", "keywords": ["wifi", "wi-fi", "internet", "password", "ვაიფაი", "ინტერნეტ"],
+     "text": "Wi-Fi network: StumarGuest. The password is printed on the sleeve of your room key card."},
+    {"id": "parking", "keywords": ["parking", "park", "garage", "car", "პარკინგ", "მანქან"],
+     "text": "The hotel has no on-site parking. The nearest public garage is 300 m away and costs 3 GEL per hour; the hotel cannot reserve spaces."},
+    {"id": "housekeeping", "keywords": ["towel", "pillow", "blanket", "toiletries", "toiletry", "shampoo", "clean", "cleaning", "cleaned", "sheets", "პირსახოც", "ბალიშ", "საბან", "დალაგებ"],
+     "text": "Rooms are cleaned daily between 10:00 and 15:00. Extra towels, pillows, blankets and toiletries are free on request and delivered within 30 minutes."},
+    {"id": "maintenance", "keywords": ["broken", "leak", "water", "ac", "air conditioning", "air-conditioning", "heating", "lock", "door", "light", "repair", "კონდიციონერ", "გაფუჭ", "წყალ", "საკეტ", "კარი", "კარს", "კარის"],
+     "text": "Report leaks, air-conditioning, door lock or electrical problems to reception at any time. Urgent issues are handled within 15 minutes, 24/7."},
+    {"id": "quiet_hours", "keywords": ["quiet", "noise", "noisy", "loud", "party", "ხმაურ"],
+     "text": "Quiet hours are 22:00-08:00. Parties and gatherings in rooms are not permitted."},
+    {"id": "pets", "keywords": ["pet", "dog", "cat", "ძაღლ", "კატა"],
+     "text": "Pets are not allowed, with the exception of registered assistance animals."}
+  ]
+}
