@@ -70,7 +70,7 @@ flowchart LR
   - g5 refusal: free airport shuttle
 
   Threshold 0.70. Index: [`evals/results/`](../evals/results/README.md).
-- **Last live run:** 2026-11-24, [`golden-20261124-162717-live.md`](../evals/results/golden-20261124-162717-live.md). It scored 0/5 because the **provider failed** (HTTP 500/503 "high demand", 429s on all 15 calls). That says nothing about the model, and a g5-only retry failed the same way. **Current offline run:** [`2026-11-24-1644-offline.json`](../evals/results/2026-11-24-1644-offline.json), **4/5 (0.80)**. Earlier evidence: the 3 HW1 cases passed live on 2026-10-15 ([`hw1/Luka-Dumbadze/golden.md`](../hw1/Luka-Dumbadze/golden.md)).
+- **Last live run:** 2026-11-24, [`golden-20261124-162717-live.md`](../evals/results/golden-20261124-162717-live.md). It scored 0/5 because the **provider failed** (HTTP 500/503 "high demand", 429s on all 15 calls). That says nothing about the model. Two g5-only retries ([16:56](../evals/results/2026-11-24-1656-live-partial.md)) failed the same way (HTTP 500). **Current offline run:** [`2026-11-24-1644-offline.json`](../evals/results/2026-11-24-1644-offline.json), **4/5 (0.80)**. Earlier evidence: the 3 HW1 cases passed live on 2026-10-15 ([`hw1/Luka-Dumbadze/golden.md`](../hw1/Luka-Dumbadze/golden.md)).
 - **What failed and why:**
   - **g4** fails offline: "chek out" matches no keyword, so no section is sent and the reply refuses instead of answering 11:00. Safe but unhelpful; the fix is fuzzy matching, with a new decision record.
   - **g5 is unverified live.** Its offline pass means nothing, because the mock cannot hallucinate. It is the first question to run on a fresh quota.
@@ -102,7 +102,7 @@ Prices are $0.75 / $3.75 per million tokens (in / out, promotional; verify befor
 
 ## 6 · Team, roles and decisions
 
-- **Team contract:** [`TEAM-CONTRACT.md`](../TEAM-CONTRACT.md) at the repo root. Both members are named. Roles, decision rule and sync time are **still to be filled in and signed by commit (overdue since Week 3)**. Roles: [`docs/TEAM-REPO.md`](TEAM-REPO.md) §1, to be filled in together. Roster: [`docs/team.md`](team.md).
+- **Team contract:** [`TEAM-CONTRACT.md`](../TEAM-CONTRACT.md) at the repo root. Roles and rules are proposed from the commit history: Luka is Repo + Eval keeper; Urju is Spec + Data & content keeper. **Not yet signed by commit (overdue since Week 3).** Roles: [`docs/TEAM-REPO.md`](TEAM-REPO.md) §1.
 - **Decision records** ([`docs/decisions/`](decisions/)):
   - [0001 room gate in code](decisions/0001-room-gate-in-code.md)
   - [0002 Georgian word-start matching](decisions/0002-georgian-word-start-matching.md)

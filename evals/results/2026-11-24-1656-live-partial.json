@@ -1,0 +1,48 @@
+{
+ "ts": "2026-11-24T12:56:15+00:00",
+ "mode": "live",
+ "chat_model": "gemini:gemini-3.8-flash",
+ "commit": "3cc454d",
+ "today": "2026-10-15",
+ "passed": 0,
+ "total": 1,
+ "pass_rate": 0.0,
+ "threshold": 0.7,
+ "gate": "N/A (partial)",
+ "note": "LIVE model run. PARTIAL run (1 of 5 questions): not a gate result.",
+ "items": [
+  {
+   "id": "g5",
+   "type": "refusal",
+   "pass": false,
+   "why": [
+    "expected refused, got failed (model_failed after 3 call(s): transient: InternalServerError)"
+   ],
+   "status": "failed",
+   "question": "Do you provide a free airport shuttle?",
+   "answer": "Sorry, I couldn't process your message automatically. I've flagged it for the front desk, who will reply shortly.",
+   "cited": [],
+   "tasks": [],
+   "room": null,
+   "room_status": "missing",
+   "room_validated": false,
+   "needs_clarification": false,
+   "sections_sent": [],
+   "guardrail_events": [
+    "attempt 1 failed: transient: InternalServerError",
+    "attempt 2 failed: transient: InternalServerError",
+    "attempt 3 failed: transient: InternalServerError",
+    "model_failed after 3 call(s): transient: InternalServerError"
+   ],
+   "usage": {
+    "attempts": 3,
+    "prompt_tokens": 0,
+    "completion_tokens": 0,
+    "total_tokens": 0,
+    "latency_ms": 5096,
+    "tokens_estimated": false
+   },
+   "request_id": "8fdcda3a479e"
+  }
+ ]
+}

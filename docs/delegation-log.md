@@ -106,3 +106,27 @@ Everything below is AI-drafted and **not yet reviewed by a teammate**. It goes t
 - **Decision:** wording fixed. The sign-off table is left for Luka; an agent must not tick it.
 - **AGENTS.md change:** none.
 - **Cost:** small.
+
+### Entry 9 · Spec, contract, team guide, journal
+- **Task:**
+  - align `docs/spec.md` with the Design Review (model, napkin math);
+  - fill `TEAM-CONTRACT.md` and `docs/TEAM-REPO.md` §1 from the real repo activity;
+  - assemble `docs/journal/Luka-Dumbadze.md` from Luka's existing entries;
+  - set a noreply git identity;
+  - run g5 live once;
+  - push and open a draft PR.
+- **Delegated to:** Claude Code (Opus 5.5), with `git log`, `hw1/UrjuHub/`, the `gh` CLI (Luka's account) and the course guide.
+- **Plan check:** none. Executed from a detailed prompt.
+- **Came back wrong / judgement calls to review:**
+  - **Roles are inferred, not agreed.** Luka is Repo + Eval keeper, because the guide says the repo keeper stays the owner and Luka owns the repo. Urju is Spec + Data & content keeper, with no `src/` or `tests/` commits yet. The contract is marked *proposed*; Urju may change any line when signing.
+  - **Unpushed history was rewritten.** The noreply rule was "future commits only". But 5 of the branch's 7 unpushed commits carried the personal gmail address, so before the first push all 7 were re-stamped with `<id>+Luka-Dumbadze@users.noreply.github.com`. The tree, messages and dates are identical; `main` and pushed history are untouched. Old hashes are mapped in `evals/results/README.md`.
+  - **The journal is verbatim, but its provenance is mixed.** HW1's `delegation.md` says the agent wrote the first draft of the HW1 journal. The entries were copied by script, unchanged, with a note asking Luka to confirm or rewrite them.
+  - **g5 live failed again:** 3 × HTTP 500 (server-side, not 429), run once as instructed.
+  - **Found while preparing Luka's line-by-line walkthrough** (confirmed by probe; not fixed, listed in the PR as follow-ups):
+    - `pipeline.py:151` leaves `needs_clarification` false when the verification request is appended for a service intent with no proposed task;
+    - the Georgian stem `კარი` (door) matches `კარიერა` (career), both in section selection and in the urgent regex;
+    - truncation at 1,000 characters (`prefilter.py:88`) is silent and can drop the room number.
+- **Caught by:** `git log` stats; a check that the tree is identical after the identity rewrite; a script asserting every journal entry is a verbatim substring; a `diff` showing TEAM-REPO §2–11 still match the course guide byte for byte.
+- **Decision:** committed on the branch and pushed as a **draft** PR. Merge waits for Urju's signing commit and review.
+- **AGENTS.md change:** none.
+- **Cost:** 3 live calls (all failed); 22 live calls that day in total.
