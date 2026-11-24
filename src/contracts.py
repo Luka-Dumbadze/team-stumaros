@@ -54,3 +54,4 @@ class CreateServiceTask(Contract):
     urgent), so do not ask the guest for one."""
     department: Department
     task: TaskText
+    room: str | None = None   # THROWAWAY: deliberately weakened (an identity field the model can fill). Never merge.
