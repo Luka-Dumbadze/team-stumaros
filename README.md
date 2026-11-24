@@ -1,76 +1,50 @@
 # StumarOS (სტუმაროს)
 
-An AI guest-operations assistant for 15–60 room boutique hotels in Georgia. One guest message (English or Georgian) goes in; a **grounded reply** and zero or more **dispatch tasks** for housekeeping, maintenance or the front desk come out.
+**Answers boutique-hotel guests from the hotel's own policy, and turns their requests into validated housekeeping, maintenance and front-desk tasks, in English or Georgian.**
+CS6920 capstone · Fall 2026 · team-stumaros · Luka Dumbadze, Urju
 
-The working rule is *prompting proposes, code governs*. The model drafts the reply and proposes tasks. Deterministic Python decides which room a message is about, whether that stay is active, which policy text the model may see, the final priority of safety issues, and whether any task is dispatched at all.
+> Status: Week 4. A CLI triage pipeline (`src/`) with a code-enforced room gate, priority overrides, grounding checks and a 5-question golden set. The FastAPI `POST /chat` service and session memory in `AGENTS.md` are the Week 5+ target.
 
-- Spec and measurable success criteria: [`docs/spec.md`](docs/spec.md)
-- Milestone 1 design review: [`docs/DESIGN-REVIEW.md`](docs/DESIGN-REVIEW.md)
-- Architecture decision records: [`docs/decisions/`](docs/decisions/)
-- Agent instructions (read before changing code): [`AGENTS.md`](AGENTS.md)
+## The problem
+One receptionist on a shared phone reads every guest message during the check-in rush. They answer the same policy questions and retype requests into staff tasks. A request from a room that already checked out, or a confident wrong answer, costs real staff time.
 
-> **Status (Week 4):** a CLI triage pipeline (`src/`), promoted from the HW1 slice. The FastAPI `POST /chat` service, session memory and `app/` described in `AGENTS.md` are the Week 5+ target and do not exist yet.
+## Demo
+Not yet: the narrated video comes in Week 14, deployment in Week 12.
 
-## Layout
-```
-src/                 triage pipeline (promoted from hw1/Luka-Dumbadze/src)
-  prefilter.py         room extraction + validation, keyword section selection (≤ 3), token estimate
-  llm.py               prompt, OpenAI-SDK client for Gemini / OpenRouter, offline mock, ≤ 3-call budget
-  pipeline.py          orchestration + guardrails: room gate, priority overrides, grounding checks
-  schemas.py           Task / model-output validation (stdlib dataclasses)
-  main.py              CLI
-  bench.py             live latency benchmark
-data/                hotel_guide.json, active_rooms.json (mock data; stays are valid on 2026-10-15; read-only)
-tests/               pytest suite (offline, no API key needed)
-evals/
-  golden.yaml          5 checkable golden cases + 0.70 pass threshold
-  run_golden.py        runs, scores and reports the golden set
-  results/             committed reports (JSON + Markdown), live or clearly labelled offline
-docs/                spec, design review, ADRs, team, pattern journal
-hw1/                 individual HW1 submissions (historical; do not edit)
-logs/                usage.jsonl, one record per model attempt (git-ignored)
-```
-
-## Setup
-Python 3.11+ (developed on 3.12).
+## Run it
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -r requirements.txt
-cp .env.example .env        # then set GEMINI_API_KEY (or OPENROUTER_API_KEY); .env is git-ignored
-```
-With no key set, everything runs against a deterministic **mock** client. That is enough for the tests and for checking the code gates, but it says nothing about model quality.
-
-## Run
-All commands run from the repo root.
-
-**CLI: triage one message.** The mock stays are valid on 2026-10-15, so pin `--today`:
-```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+cp .env.example .env        # then set GEMINI_API_KEY (or OPENROUTER_API_KEY); with no key, a mock client runs
 .venv/bin/python -m src.main --today 2026-10-15 --query "Can we get 2 extra pillows in room 204?"
-.venv/bin/python -m src.main --today 2026-10-15 --query "The AC isn't working!" --mock   # force offline
-.venv/bin/python -m src.main --today 2026-10-15 --query "..." --log-file logs/usage.jsonl
+.venv/bin/python -m pytest -q tests                  # unit tests, offline, no key (what CI runs)
+.venv/bin/python evals/run_golden.py                 # golden set: live if a key is set, else offline (mock)
+.venv/bin/python evals/usage_summary.py              # medians from logs/usage.jsonl
+```
+- **Stay dates:** the mock stays in `data/active_rooms.json` are valid on 2026-10-15, so pin `--today`.
+- **Mock vs live:** `--mock` forces the offline client. `evals/run_golden.py --mode live --only g5` runs one question live.
+- **Usage log:** every model attempt is appended to `logs/usage.jsonl` (git-ignored).
+- **HW1 suite:** the HW1 snapshot keeps its own tests: `pytest hw1/Luka-Dumbadze/src`.
+
+## How it works
+- **Pipeline:** guest message → **room gate** in code (`src/prefilter.py`, against `data/active_rooms.json`) → **keyword pre-filter** sends at most 3 sections of `data/hotel_guide.json` → one `gemini-3.8-flash` call returns JSON (at most 3 calls with retries, `src/llm.py`) → **guardrails** in `src/pipeline.py`. The guardrails drop tasks for invalid rooms, force leak/lock/AC tasks to `urgent`, and replace replies with unsupported numbers.
+- **Uncertainty:** when unsure, it asks or escalates to the front desk ([`docs/confidence-policy.md`](docs/confidence-policy.md)).
+- **Architecture and budget:** [`docs/DESIGN-REVIEW.md`](docs/DESIGN-REVIEW.md) · **Key decisions:** [`docs/decisions/`](docs/decisions/)
+
+```
+src/      triage pipeline          tests/    pytest suite (CI)         evals/   golden.yaml, runner, results/
+data/     mock guide + stays       docs/     spec, review, decisions   hw1/     individual HW1 (historical)
 ```
 
-**Unit tests** (offline):
-```bash
-.venv/bin/python -m pytest                          # root suite: tests/
-.venv/bin/python -m pytest hw1/Luka-Dumbadze/src    # HW1 snapshot's own suite
-```
+## Does it work? (evidence)
+| What we measure | Result | Where |
+|---|---|---|
+| Unit tests | 53 passing locally; CI added Week 4, no run on `main` yet | `tests/`, `.github/workflows/ci.yml` |
+| Golden set | 4/5 offline (0.80, threshold 0.70); live **not yet measured** (provider outage 2026-11-24) | [`evals/results/`](evals/results/README.md) |
+| Cost per request | $0.00068 median (463 / 89 tokens) | HW1 live usage; `logs/usage.jsonl` from the next live run |
+| p95 latency | 8.36 s, against a 3 s target: **fails** | `hw1/Luka-Dumbadze/golden.md` |
 
-**Golden evaluation:**
-```bash
-.venv/bin/python evals/run_golden.py                # live if a key is set, otherwise offline mock
-.venv/bin/python evals/run_golden.py --mode mock    # force offline (code gates only)
-.venv/bin/python evals/run_golden.py --mode live    # fail if no key
-```
-Each run writes `evals/results/golden-<timestamp>-<live|mock>.{json,md}`, appends every model attempt to `logs/usage.jsonl`, and exits `1` if the pass rate is below the 0.70 threshold. Live runs space cases 12 s apart, because the free Gemini tier allows about 20 requests per day.
+## Case study
+From Week 13: `docs/case-study.md`.
 
-**Latency benchmark** (live only, uses quota):
-```bash
-.venv/bin/python -m src.bench --n 10 --gap 12
-```
-
-## Model access
-`GEMINI_API_KEY` → Google AI Studio's OpenAI-compatible endpoint (`gemini-3.8-flash`, thinking off); otherwise `OPENROUTER_API_KEY` → OpenRouter; otherwise the mock client. See [ADR 003](docs/decisions/003-openai-endpoint-portability.md). Keys come from the environment or `.env` only, and are never logged.
-
-## Team
-[@Luka-Dumbadze](https://github.com/Luka-Dumbadze). See [`docs/team.md`](docs/team.md) and [`docs/team-contract.md`](docs/team-contract.md).
+## Team and how we work
+Luka Dumbadze ([@Luka-Dumbadze](https://github.com/Luka-Dumbadze)) · Urju ([@UrjuHub](https://github.com/UrjuHub)) · Team rules: [docs/TEAM-REPO.md](docs/TEAM-REPO.md) · Spec: [docs/spec.md](docs/spec.md) · Delegation log: [docs/delegation-log.md](docs/delegation-log.md) · Journals: [docs/journal/](docs/journal/) · Team contract: [TEAM-CONTRACT.md](TEAM-CONTRACT.md) · Agent rules: [AGENTS.md](AGENTS.md)

@@ -1,194 +1,116 @@
-# Milestone 1: Design Review · Stumaros
+# Design Review · StumarOS (სტუმაროს) · team-stumaros
 
-**Product:** Stumaros (სტუმაროს) — AI-Powered Boutique Hotel Operations Assistant  
-**Team:** `team-stumaros`  
-**Repository:** `https://github.com/Luka-Dumbadze/team-stumaros`  
-**Course:** CS6920: Building AI-Powered Applications · Fall 2026 · Kutaisi International University  
-**Date:** October 20, 2026  
-**Status:** Milestone 1 Release · Tag: `design-review`
+Members: Luka Dumbadze · [@Luka-Dumbadze](https://github.com/Luka-Dumbadze) · Urju · [@UrjuHub](https://github.com/UrjuHub) · roles: [`docs/TEAM-REPO.md`](TEAM-REPO.md) §1 · Repo: https://github.com/Luka-Dumbadze/team-stumaros · Graded commit: tag `design-review` (2026-10-20); this revision follows instructor feedback.
 
----
+## 1 · Problem, users, success criteria
 
-## 1. Problem Statement and Target Users
+**Problem.** At a 15–60 room boutique hotel in Georgia, one receptionist on a shared phone reads every guest WhatsApp message during the check-in rush. They answer the same policy questions repeatedly and retype service requests into housekeeping and maintenance tasks. A request from a room that already checked out, or a confident wrong answer ("the pool is open late"), creates real staff work.
 
-### 1.1 The Operational Problem
-Boutique hotels in Georgia operate with lean front-desk teams. During peak check-in windows, staff spend over 40% of their shift fielding repetitive guest inquiries (breakfast hours, pool access, checkout policies) while manually transcribing guest requests into housekeeping and maintenance work orders. Miscommunications cause delayed requests, ungrounded amenity promises (e.g., promising late checkouts during full capacity), and operational bottlenecks.
+**Users.** Front-desk staff, who need validated tasks (room, department, priority) instead of chat logs. Guests writing in English or Georgian. Full spec: [`docs/spec.md`](spec.md).
 
-### 1.2 Target Users
-1. **The Hotel Guest:** Local and international travelers communicating in English or Georgian via web or messaging apps. They expect instant, accurate answers about hotel amenities and seamless task logging (e.g., extra pillows, AC repair).
-2. **The Operations & Front Desk Staff:** Hotel administrators who require structured, validated tasks (categorized by department, room, and urgency) rather than raw, ambiguous chat logs.
+| # | Success criterion (from `docs/spec.md`) | Measured by | Today |
+|---|---|---|---|
+| S1 | Answers come only from `hotel_guide.json`. An unanswerable question gets "not available" + a front-desk offer. Zero forbidden claims. | golden set [`evals/golden.yaml`](../evals/golden.yaml) (`must_mention`, `must_not_mention`, `expect: refused`) | offline 4/5 (0.80); **live not yet measured** (provider outage, §4) |
+| S2 | No task for a missing, unknown, checked-out or expired room | room-gate tests in `tests/test_feature.py`; golden g2, g3 | passing; live in HW1, the gate dropped a task the model proposed |
+| S3 | At most 3 model calls per request | `call_with_budget` + `test_transient_errors_capped_at_three_calls`; `request_id` in `logs/usage.jsonl` | passing; max 3 per request in the log |
+| S4 | p95 end-to-end latency ≤ 3,000 ms | `src/bench.py` (later: harness on `POST /chat`) | **FAIL**: p95 8.36 s, p50 5.35 s (HW1 live, n = 9) |
 
-### 1.3 Success Criteria (checkable)
-The full definitions, scenario mix and fixture format are in [`docs/spec.md` § Success criteria](spec.md#success-criteria). Each criterion below has a numeric threshold, a mechanical check and its status as of Week 4.
+The spec's 24-scenario `POST /chat` harness is the Week 5+ target; until then S1–S3 use the 5-question set.
 
-| # | Criterion | Threshold | How it is checked | Status (Week 4) |
+## 2 · Architecture and data flow
+
+```mermaid
+flowchart LR
+  G[Guest: EN / KA text] -->|message, optional room| P[triage: src/pipeline.py<br/>CLI today, POST /chat planned]
+  P --> RG{room gate<br/>src/prefilter.py}
+  AR[(data/active_rooms.json)] --> RG
+  P --> PF[keyword pre-filter<br/>0-3 guide sections]
+  HG[(data/hotel_guide.json)] --> PF
+  RG -->|room number + status only| M1
+  PF --> M1[gemini-3.8-flash<br/>triage JSON]
+  M1 -->|invalid JSON: 1 corrective retry, max 3 calls| M1
+  M1 --> GR{guardrails<br/>room gate, priority override,<br/>number grounding}
+  GR -->|accepted| OUT[reply + tasks]
+  GR -->|confirm| ASK[ask room number + booking name]
+  GR -->|review / rejected| ESC[front-desk escalation]
+  OUT --> STAFF[Staff: housekeeping,<br/>maintenance, front desk]
+  ESC --> STAFF
+  M1 -.->|every attempt| LOG[(logs/usage.jsonl)]
+```
+
+| Model call | Model id | Input | Output | Validated by |
 |---|---|---|---|---|
-| S1 | End-to-end latency | p95 ≤ 3,000 ms, max ≤ 6,000 ms per request, retries included (spec); HW1 slice target p95 < 2.5 s | Harness wall-clock (`src/bench.py`; `POST /chat` once it exists) | **FAIL**: HW1 live p95 8.36 s, p50 5.33 s (n = 6 answered) |
-| S2 | Model-call budget | 100% of requests ≤ 3 model calls | Code cap in `call_with_budget` + test; audit `request_id` in `logs/usage.jsonl` | **PASS**: `test_transient_errors_capped_at_three_calls`; no live request exceeded 3 calls |
-| S3 | Grounded answers | ≥ 90% of answerable questions contain all expected facts; 100% of unanswerable ones say "not available" + offer the front desk; 0 forbidden claims | Regex `must_mention` / `must_not_mention` in [`evals/golden.yaml`](../evals/golden.yaml) | **Not yet measured live** ([§4.2](#42-team-golden-set-week-4-evalsgoldenyaml)) |
-| S4 | Room gate and dispatch | 100% of valid-room requests emit exactly the expected tasks; 100% of invalid/missing-room requests emit `tasks: []`, `room_validated: false` and a verification prompt | `must_block_task` / `expected_tasks` in the golden set + parametrised tests | **PASS offline** (tests, mock G1–G3); live pending |
-| S5 | Golden-set gate | pass rate ≥ 0.70 | `python evals/run_golden.py` (exit code 1 on failure) | Offline 4/5 = 0.80; first live run 0/5 (provider outage, not model behaviour) |
+| triage | `gemini-3.8-flash` (Google AI Studio); `google/gemini-3.8-flash` via OpenRouter as fallback | system prompt + ≤ 3 guide sections + `{room, status}` + message (≤ 1,000 chars); refused before the call above 1,200 tokens | `{intent, reply, tasks[], cited_sections, needs_clarification}` | `parse_model_output` (`src/schemas.py`), then `apply_guardrails` (`src/pipeline.py`) |
+| corrective retry | same | the previous output + the schema error | same | same; at most 1, inside the 3-call cap |
 
-Cost is tracked separately in [§5](#5-token-and-cost-economics-from-real-logs) (napkin estimate ~$5/month at 200 req/day). It is not a pass/fail criterion in `spec.md`.
+**Room gate before the model.** Code validates the room first. The model sees only its number and status, never a guest name. Proposed tasks are dropped unless the status is `valid`. **Retrieval (the Lab 4 path)** is a keyword pre-filter over 9 guide sections, not embeddings ([decision 0002](decisions/0002-georgian-word-start-matching.md); the arithmetic is in §5). A question with no matching section takes the refusal route. **The Lab 3 feature is not multimodal:** v1 is text-only ([decision 0004](decisions/0004-text-only-v1.md), proposed). The Week 3 pattern we apply is the routing in [`docs/confidence-policy.md`](confidence-policy.md). **Human in the loop:** staff act on every task and escalation. Today the CLI prints them as JSON; a staff queue comes with `POST /chat`.
 
-The 24-scenario harness that `spec.md` describes, run 3 times through `POST /chat`, is the Week 5+ target. Until then, S3–S5 are measured on the 5-case golden set.
+## 3 · Risks and safety threats
 
----
+@Luka-Dumbadze owns the pipeline, evaluation and LLM risks; @UrjuHub owns data, privacy and staff-process risks.
 
-## 2. System Architecture and Data Flow
+| Risk | What a user would see | Mitigation (link, or plan and week) | Owner |
+|---|---|---|---|
+| Invented amenity, no number in it | "Yes, we offer a free airport shuttle" | prompt rule only; code cannot catch it ([confidence policy](confidence-policy.md)). Golden g5 tracks it; claim-vs-section check by the Week 11 Audit. | @Luka-Dumbadze |
+| Invented time or price | "the pool is open until 24:00" | code replaces the reply with the front-desk escalation (`test_invented_time_replaces_reply`); the Lab 4 refusal path handles questions with no matching section | @Luka-Dumbadze |
+| Task for a room the guest does not occupy (prank, checked out, typo) | staff sent to the wrong room | room gate in code ([decision 0001](decisions/0001-room-gate-in-code.md)); conflicting rooms are never trusted; `confirm` / `review` routes | @Luka-Dumbadze |
+| Priority over-escalation | "bottles of water" or "7 o'clock" filed as `urgent` | known bug ([decision 0001](decisions/0001-room-gate-in-code.md)); word boundaries + regression tests, Week 5 | @Luka-Dumbadze |
+| Provider outage or quota | fallback reply after up to 3 calls; all 18 live calls failed on 2026-11-24 | 3-call cap, no task without a model answer; paid or OpenRouter key before the Week 11 live gate | @Luka-Dumbadze |
+| Personal data | guest names or ID images exposed | names never enter prompts (test); `data/` is mock; no faces or ID documents ([decision 0004](decisions/0004-text-only-v1.md)); no emails in docs (old commits keep one; history not rewritten) | @UrjuHub |
+| Wrong or stale policy in the guide | a correct-looking answer from outdated rules | `hotel_guide.json` is human-curated and read-only for agents (`AGENTS.md`); content review with the hotel before Demo Day | @UrjuHub |
+| Fallback promises a follow-up nobody sends | "flagged for the front desk", then silence | staff notification or reworded fallback when `POST /chat` lands, Week 6 ([confidence policy](confidence-policy.md) §4) | @UrjuHub |
 
-Stumaros follows the core operator maxim: **"Prompting proposes, code governs."** The model is never granted direct database write access or permission to hallucinate operational tasks without code-level verification.
+## 4 · Evaluation plan
 
-```
-                      ┌────────────────────────────────────────┐
-                      │              Guest Input               │
-                      │    (English / Georgian Message)        │
-                      └──────────────────┬─────────────────────┘
-                                         │
-                                         ▼
-                      ┌────────────────────────────────────────┐
-                      │       Deterministic Room Check         │
-                      │  (Active room, stay dates, guest ID)   │
-                      └──────────────────┬─────────────────────┘
-                                         │
-                      ┌──────────────────┴─────────────────────┐
-                      │ Context Filter (Pattern 01: Budget)    │
-                      │  Prunes 2,560-token guide to <450 tok  │
-                      └──────────────────┬─────────────────────┘
-                                         │
-                                         ▼
-                      ┌────────────────────────────────────────┐
-                      │ LLM Gateway (Gemini 3.8 Flash / OpenAI)│
-                      │  - reasoning_effort="none"             │
-                      │  - Strict JSON Task & Reply Schema     │
-                      └──────────────────┬─────────────────────┘
-                                         │
-                                         ▼
-                      ┌────────────────────────────────────────┐
-                      │  Grounding & Task Validation Gate      │
-                      │  - Drops tasks lacking active room     │
-                      │  - Forces AC/water leaks to URGENT     │
-                      │  - Regex checks prices & times         │
-                      └──────────────────┬─────────────────────┘
-                                         │
-                 ┌───────────────────────┴───────────────────────┐
-                 ▼                                               ▼
-   ┌─────────────────────────────┐                   ┌───────────────────────────┐
-   │ Verified Guest Reply        │                   │ Structured Staff Work     │
-   │ (Natural Language Response) │                   │ Order (JSON / DB Task)    │
-   └─────────────────────────────┘                   └───────────────────────────┘
-```
+- **Golden set:** [`evals/golden.yaml`](../evals/golden.yaml), 5 questions in the Week 4 mix:
+  - g1 reasoning: Georgian pillows + breakfast, room 204
+  - g2 factual: pool at 23:30 from checked-out room 305
+  - g3 factual: broken AC, no room
+  - g4 edge: typos
+  - g5 refusal: free airport shuttle
 
-### 2.1 Architectural Invariants
-* **Pre-Execution Gate:** Room resolution and validation run in code *before* the model call. If a guest request omits a room number, references an expired stay, or names a conflicting room, the model still answers any policy question, but code drops every proposed task and asks for room number + booking name ([ADR 001](decisions/001-room-gate-in-code.md)).
-* **Context Budget Gate:** The complete hotel guide (~2,560 tokens) is never dumped into the prompt. Keyword-anchored pre-filtering extracts at most 3 relevant policy sections, capping prompt input to under 500 tokens.
-* **Deterministic Guardrails:** The LLM's role is restricted to natural-language drafting and intent extraction. Code handles priority escalation (e.g., water leaks are automatically forced to `urgent`) and unverified price/time rejection.
+  Threshold 0.70. Index: [`evals/results/`](../evals/results/README.md).
+- **Last live run:** 2026-11-24, [`golden-20261124-162717-live.md`](../evals/results/golden-20261124-162717-live.md). It scored 0/5 because the **provider failed** (HTTP 500/503 "high demand", 429s on all 15 calls). That says nothing about the model, and a g5-only retry failed the same way. **Current offline run:** [`2026-11-24-1644-offline.json`](../evals/results/2026-11-24-1644-offline.json), **4/5 (0.80)**. Earlier evidence: the 3 HW1 cases passed live on 2026-10-15 ([`hw1/Luka-Dumbadze/golden.md`](../hw1/Luka-Dumbadze/golden.md)).
+- **What failed and why:**
+  - **g4** fails offline: "chek out" matches no keyword, so no section is sent and the reply refuses instead of answering 11:00. Safe but unhelpful; the fix is fuzzy matching, with a new decision record.
+  - **g5 is unverified live.** Its offline pass means nothing, because the mock cannot hallucinate. It is the first question to run on a fresh quota.
+- **By Week 11:** 10 questions, **3 factual, 2 reasoning, 2 edge, 2 refusal, 1 format**. We add:
+  - 1 factual: parking price
+  - 1 reasoning: late check-out time + fee
+  - 1 edge: payload and message name different rooms
+  - 1 refusal: spa booking
+  - 1 format: every task field from the allowed enums, reply in the guest's language
 
-### 2.2 Input Scope and Confidence Policy
-* **Text only in v1.** No Week 3 multimodal input (no poster/menu OCR, no guest ID photos): latency is already over budget and ID images are high-risk personal data. Check-in ID capture on the staff side is the candidate for a later ADR. See [ADR 004 · Part A](decisions/004-multimodal-and-confidence-policy.md#part-a--multimodal-input-week-3-pattern).
-* **Never guess.** A missing, ambiguous or invalid room, a question no guide section answers, an unsupported number, or a model failure always routes to clarification or the front desk. Confidence comes from deterministic signals in code, never from a model-reported score. The full signal → behaviour table, including the gaps that are still prompt-only, is [ADR 004 · Part B](decisions/004-multimodal-and-confidence-policy.md#part-b--confidence-policy-uncertainty-aware-ux).
-* All decision records: [`docs/decisions/`](decisions/).
+  The runner exits 1 below 0.70, and CI ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml), today `pytest -q tests`) runs it as a required check. **The gate blocks** any merge that drops the pass rate below 0.70. A live run needs a key as a repository secret; 10 questions × up to 3 calls exceed the free tier's ~20 requests/day.
 
----
+## 5 · Token budget
 
-## 3. Risks, Safety Threats, and Mitigations
+| Feature | Model | Tokens in / out (median) | Cost per request | Latency (median) | Source |
+|---|---|---|---|---|---|
+| triage, live | gemini-3.8-flash | 463 / 89 | $0.00068 | 5.35 s (p95 8.36 s) | the 9 successful live answers from 2026-10-15, with API `usage` ([`hw1/Luka-Dumbadze/golden.md`](../hw1/Luka-Dumbadze/golden.md)) |
+| `logs/usage.jsonl` | n/a | none yet | n/a | n/a | [`2026-11-24-1644-usage.json`](../evals/results/2026-11-24-1644-usage.json): 18 live attempts, 0 answered |
 
-Every risk has a named owner, assigned from the roster in [`docs/team.md`](team.md). The role column says which hat is accountable. Owners should be redistributed once the roster is final (see [§6.1](#61-team-roster-and-responsibilities)). Cross-cutting rule: when the system is unsure, it asks or escalates instead of guessing ([confidence policy, ADR 004 Part B](decisions/004-multimodal-and-confidence-policy.md#part-b--confidence-policy-uncertainty-aware-ux)).
+Prices are $0.75 / $3.75 per million tokens (in / out, promotional; verify before shipping).
 
-| Threat | Impact | Mitigation implemented | Owner (role) |
-| :--- | :--- | :--- | :--- |
-| **Ungrounded Financial Liability** | Model invents free services (e.g., free airport shuttle, complimentary breakfast). | **Numbers:** code replaces any reply containing a time/price absent from the sent policy text or the guest message with *"I don't have that information; I can ask the front desk to help you."* **Non-numeric claims** ("yes, we have a shuttle") are blocked **by the prompt only**: a known gap, tracked by golden case G5 ([ADR 004](decisions/004-multimodal-and-confidence-policy.md), signal 7). | @Luka-Dumbadze (grounding & evals) |
-| **Georgian Substring Collision** | In Georgian, pool (`აუზ`) is a substring of breakfast (`საუზმე`), causing wrong policy injection. | Word-start matching for Georgian stems in `prefilter.py`, backed by an exact-sections regression test ([ADR 002](decisions/002-georgian-word-start-matching.md)). Typo / Latin-script input is still unmatched (golden G4). | @Luka-Dumbadze (context pre-filter) |
-| **Reasoning Token Quota Exhaustion** | Gemini default "thinking" tokens consume output budget, truncating JSON and triggering 25s timeouts. | Hardcoded `reasoning_effort="none"` in the API client adapter, pinned by automated unit tests ([ADR 003](decisions/003-openai-endpoint-portability.md)). | @Luka-Dumbadze (LLM gateway) |
-| **Unauthorized Task Injection** | Malicious users fabricate work orders for rooms they do not occupy. | Deterministic verification matches room state against active reservation dates in `active_rooms.json` before creating staff tasks; conflicting rooms are not trusted ([ADR 001](decisions/001-room-gate-in-code.md)). | @Luka-Dumbadze (architecture & guardrails) |
-| **Service Quota Denial of Service** | Free-tier limits (20 req/day) and provider outages cause cascading 5xx/429 errors (all 15 calls failed in the 2026-11-24 live golden run). | Graceful degradation: at most 3 calls, then a safe front-desk fallback with no tasks, logged as `model_failed`. **Gap:** the fallback says the message was "flagged for the front desk", but nothing notifies staff until `POST /chat` surfaces it. | @Luka-Dumbadze (LLM gateway) |
-| **Priority Over-escalation** *(found Week 4)* | Unanchored urgent keywords mark "bottles of water", "7 o'clock" and "towels outside the door" as `urgent`, flooding the 15-minute channel. | Not yet fixed: word boundaries + failure-intent check + regression tests ([ADR 001](decisions/001-room-gate-in-code.md), consequences). | @Luka-Dumbadze (architecture & guardrails) |
+**Honest gap.** HW1 did not write the usage log, so these medians come from 9 real API responses recorded in `golden.md` (the brief asks for 10). Every attempt is now logged to `logs/usage.jsonl`; `python evals/usage_summary.py --save` replaces this row after the next live run.
 
----
+**Monthly cost** at 200 requests/day: 200 × 30 × $0.00068 ≈ **$4.09**.
 
-## 4. Evaluation Plan and Empirical Telemetry
+**Georgian.** HW1 measured **463 input tokens for the Georgian message vs 466 for an English one**: the penalty is not in the input, because the English system prompt dominates it. It is in the **output: 145 vs 89 tokens, about 1.6x**. That makes ≈ $5.35/month for all-Georgian traffic against ≈ $4.10 for English. (These are two different messages, so treat it as indicative.)
 
-### 4.1 HW1 Live Golden Results (2026-10-15)
-Three golden scenarios were run live through the HW1 slice. Full log: [`hw1/Luka-Dumbadze/golden.md`](../hw1/Luka-Dumbadze/golden.md). *(Inputs corrected in Week 4 to the exact strings that were run.)*
+**RAG or long context.** Sending the whole guide plus the room list on every call means about 2,560 input tokens. That is $0.00225/request and ≈ $13.50/month (3.3x), and it would also put every guest's name in every prompt. The pre-filter wins on both cost and privacy.
 
-| ID | Scenario | Input | Expected Output | Live Result (Gemini 3.8 Flash) | Tokens (In / Out) | Latency |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **G1** | Georgian: Pillows & Breakfast | *"გამარჯობა! ოთახი 204-ში 2 დამატებითი ბალიში გვჭირდება. როდემდეა საუზმე?"* | Answers breakfast hours (07:00–10:30); dispatches normal housekeeping task for Room 204 within 30 min. | **PASS** | 463 / 145 | 5.35 s |
-| **G2** | Policy Violation: Pool at 23:30 | *"Room 305 here. Can we use the pool at 23:30 tonight? Also please send 2 towels."* | Notes pool closes at 22:00; flags Room 305 as checked-out; blocks staff task creation. | **PASS** | 466 / 89 | 6.22 s |
-| **G3** | Missing Information: AC Broken | *"The AC isn't working and it's really hot, please help!"* | Refuses task creation due to missing room; requests room number and guest name; escalates to front desk. | **PASS** *(Recovered from initial API 500)* | 391 / 83 | 5.01 s |
+## 6 · Team, roles and decisions
 
-### 4.2 Team Golden Set (Week 4): [`evals/golden.yaml`](../evals/golden.yaml)
-The three HW1 cases are now machine-checkable team cases, plus two new ones. Each case declares `must_mention` / `must_not_mention` regexes and either `must_block_task: true` or the exact `expected_tasks`. A case that ends in the model-failure fallback never passes. Runner: [`evals/run_golden.py`](../evals/run_golden.py). Reports, with an interpretation index: [`evals/results/`](../evals/results/).
+- **Team contract:** [`TEAM-CONTRACT.md`](../TEAM-CONTRACT.md) at the repo root. Both members are named. Roles, decision rule and sync time are **still to be filled in and signed by commit (overdue since Week 3)**. Roles: [`docs/TEAM-REPO.md`](TEAM-REPO.md) §1, to be filled in together. Roster: [`docs/team.md`](team.md).
+- **Decision records** ([`docs/decisions/`](decisions/)):
+  - [0001 room gate in code](decisions/0001-room-gate-in-code.md)
+  - [0002 Georgian word-start matching](decisions/0002-georgian-word-start-matching.md)
+  - [0003 one OpenAI-SDK client, thinking off](decisions/0003-openai-endpoint-portability.md)
+  - [0004 text-only v1 (proposed)](decisions/0004-text-only-v1.md)
+- **AI use:** Claude Code drafted this revision; see [`docs/delegation-log.md`](delegation-log.md).
+- **Next:**
+  - Week 5: `POST /chat` with session state, the over-escalation fix, and a live golden run with a working key.
+  - Week 6: staff notification for escalations.
 
-| ID | Category | Case | Offline (mock) | Live (2026-11-24) |
-| :--- | :--- | :--- | :--- | :--- |
-| G1 | factual | Georgian pillows + breakfast, room 204 | PASS | provider outage |
-| G2 | policy / refusal | Pool at 23:30 + towels from checked-out 305 | PASS | provider outage |
-| G3 | uncertainty | Broken AC, no room | PASS | provider outage |
-| G4 | edge / typo | *"gamarjoba! wat time is chek out tmrw??"* | **FAIL**: pre-filter has no typo tolerance, so no policy is sent | provider outage |
-| G5 | hallucination guard | *"Do you provide a free airport shuttle?"* (not in the guide) | PASS (meaningless: the mock cannot hallucinate) | provider outage, retried: **still unverified** |
-
-* **Offline:** 4/5 = 0.80, above the 0.70 threshold. This verifies the code gates only.
-* **Live:** both live attempts on 2026-11-24 failed on infrastructure (HTTP 500/503 "high demand", timeouts, 429s on all 18 calls). They say nothing about model quality. G5, the non-numeric hallucination test, remains **open** and is the first thing to run on a fresh quota.
-
-### 4.3 Week 11 Golden Set Gate (plan)
-* **Size and mix:** 10 questions in a **3 / 2 / 2 / 2 / 1** mix:
-  * 3 factual (policy answers, EN + KA)
-  * 2 policy-violation / refusal
-  * 2 uncertainty (missing / invalid / conflicting room)
-  * 2 edge (typos, Latin-script Georgian, composite)
-  * 1 hallucination guard (amenity not in the guide)
-
-  It grows from the five cases above, in the same `golden.yaml` format.
-* **Threshold:** pass rate **≥ 0.70** (at least 7 of 10). Any `must_block_task` violation, i.e. a task dispatched for an unverified room, is reported as a failure regardless of the overall rate.
-* **CI gate:** a GitHub Actions workflow runs `pytest` and `python evals/run_golden.py` on every pull request. The runner exits `1` below threshold, and branch protection makes that check **required, so a failing gate blocks merge**.
-* **Live vs. offline in CI:** the live gate needs `GEMINI_API_KEY` or `OPENROUTER_API_KEY` as a CI secret. Ten cases at up to 3 calls each is 30 calls, which exceeds the free tier's ~20/day, so the live gate needs a paid or OpenRouter key. Without one, CI runs the mock gate, clearly labelled offline in the report, and a live run is required before each release tag.
-* **Status:** planned, not implemented. There is no `.github/workflows/` yet.
-
-### 4.4 Latency Benchmark & SLA Analysis
-* **Initial Spec SLA Target:** p95 latency < 2.5 seconds.
-* **Empirical Live Measurement (10-request benchmark):**
-  * Answered Requests (6): **p50 = 5.33 s, p95 = 8.36 s**.
-  * Failed / Rate-Limited Requests (4): Served via immediate local fallback.
-* **Evaluation Hygiene:** Benchmark tooling (`bench.py`) was refactored to explicitly separate answered requests from failed fallbacks to prevent artificially deflating the latency score.
-* **Roadmap to Target:** The measured p95 latency currently exceeds the 2.5s target due to transatlantic API transit and cloud generation. Weeks 6 (Streaming SSE) and 10 (Local caching of static policy queries) will bring effective guest-facing time-to-first-token under 1.5 seconds.
-
----
-
-## 5. Token and Cost Economics (From Real Logs)
-
-### 5.1 The Napkin Cost Calculation
-Using the verified Course Formula for **Gemini 3.8 Flash** ($0.75 / 1M input tokens, $3.75 / 1M output tokens):
-
-$$\text{Monthly Cost} = \Big(\text{req / day} \times (\text{tokens}_{\text{in}} \times \text{price}_{\text{in}} + \text{tokens}_{\text{out}} \times \text{price}_{\text{out}})\Big) \times 30$$
-
-Projecting boutique hotel volume at **200 requests / day**:
-
-* **Naive Context Architecture (Sending full guide every call):**
-  * Average Input: 2,560 tokens | Average Output: 110 tokens
-  * Monthly Cost: $\Big(200 \times (2,560 \times 0.00000075 + 110 \times 0.00000375)\Big) \times 30 = \mathbf{\$14.00 \text{ / month}}$
-* **Stumaros Trimmed Architecture (Pattern 01: Context as Budget):**
-  * Average Input: 440 tokens | Average Output: 105 tokens
-  * Monthly Cost: $\Big(200 \times (440 \times 0.00000075 + 105 \times 0.00000375)\Big) \times 30 = \mathbf{\$4.34 \text{ / month}}$
-* **Economic Impact:** Pre-filtering delivers a **69% recurring cost reduction** while preventing prompt context dilution.
-
-### 5.2 Georgian Token Penalty
-Testing confirmed that Georgian text tokenizes **2.5x to 3.2x heavier** than equivalent English semantics (e.g., Case 1 input tokenized at 463 tokens vs ~170 tokens for equivalent English phrasing). Context budgeting is vital in Georgia to keep bilingual systems within the sub-$5/month operational bracket.
-
----
-
-## 6. Team Structure, Governance, and Key Decisions
-
-### 6.1 Team Roster and Responsibilities
-* **Luka Dumbadze ([@Luka-Dumbadze](https://github.com/Luka-Dumbadze)):** System Architecture, LLM Gateway Integration, Evaluation Pipeline, and Context Pre-filter optimization.
-* **Team Governance:** Code reviewed through PRs; releases gated on passing unit tests and golden benchmarks (CI enforcement planned for Week 11, [§4.3](#43-week-11-golden-set-gate-plan)).
-* **Team contract ([`docs/team-contract.md`](team-contract.md)): DRAFT, not complete.** The roles are still "idk yet". The decision rule, weekly sync time and no-show rule are unfilled placeholders, and the members table is malformed. Its only commit is the initial template (2026-10-15), so no member has signed the filled-in contract. Due at team lock (end of Week 3), so it is **overdue**. Roster: [`docs/team.md`](team.md). Open question: `hw1/UrjuHub/` and most early commits come from GitHub user UrjuHub, who is not yet listed in the roster or the contract.
-
-### 6.2 Key Operator Decisions & Trade-Offs
-1. **Domain Realignment (Boutique Hotel vs. Campus Dorms):** The team aligned the system strictly around boutique hospitality in Georgia, updating specifications rather than forcing mismatched course templates.
-2. **Rejection of Model Autonomy for Task Escalation:** An early agent critique suggested having the LLM dynamically decide task priority. This was deliberately **rejected**: safety-critical priorities (water leaks, door locks, AC outages) are enforced deterministically in Python ([ADR 001](decisions/001-room-gate-in-code.md)).
-3. **OpenAI Endpoint Portability:** Standardizing on Google AI Studio's `/v1beta/openai/` endpoint enables zero-rewrite migration between Gemini and OpenRouter frontier models ([ADR 003](decisions/003-openai-endpoint-portability.md)).
-4. **Georgian word-start matching** in the pre-filter ([ADR 002](decisions/002-georgian-word-start-matching.md)).
-5. **Text-only v1 and a never-guess confidence policy** ([ADR 004](decisions/004-multimodal-and-confidence-policy.md), *Proposed*).
-
-All decisions are recorded as ADRs in [`docs/decisions/`](decisions/).
+  Drivers come from the slice rota in `docs/TEAM-REPO.md` §1.

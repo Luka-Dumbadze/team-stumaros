@@ -4,9 +4,9 @@
 
 ## Members and roles
 | Name | GitHub | Primary role | Backup role |
-|Luka Dumbadze|Luka-Dumbadze|idk yet|idk yet|
 |---|---|---|---|
-|  |  |  |  |
+| Luka Dumbadze | [@Luka-Dumbadze](https://github.com/Luka-Dumbadze) | [choose] | [choose] |
+| Urju | [@UrjuHub](https://github.com/UrjuHub) | [choose] | [choose] |
 
 Roles rotate or stay fixed: [choose]. On Demo Day, anyone answers anything, so backup roles are how you learn each other's parts.
 
