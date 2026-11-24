@@ -1,4 +1,6 @@
-"""CLI: python -m src.main --query "..." [--room 204] [--today 2026-10-15] [--mock] [--log-file logs/usage.jsonl]"""
+"""CLI: python -m src.main --query "..." [--room 204] [--today 2026-10-15] [--mock] [--session-id s1]
+
+Every model attempt is appended to logs/usage.jsonl (AGENTS.md); see evals/usage_summary.py for medians."""
 from __future__ import annotations
 
 import argparse
@@ -23,7 +25,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--today", type=date.fromisoformat, default=date.today(), help="YYYY-MM-DD (default: today)")
     parser.add_argument("--model", help="override the provider's default model")
     parser.add_argument("--mock", action="store_true", help="force the offline mock client")
-    parser.add_argument("--log-file", type=Path, help="append per-attempt usage records (JSONL)")
+    parser.add_argument("--log-file", type=Path,
+                        help="usage log path (default: logs/usage.jsonl, or $STUMAROS_USAGE_LOG)")
+    parser.add_argument("--session-id", default="cli", help="session id written to the usage log")
     args = parser.parse_args(argv)
 
     if load_dotenv:
@@ -40,7 +44,8 @@ def main(argv: list[str] | None = None) -> int:
     elif client.mode == "live":
         print(f"[live] {client.label}", file=sys.stderr)
 
-    result = triage(args.query, client, today=args.today, payload_room=args.room, log_file=args.log_file)
+    log = {"log_file": args.log_file} if args.log_file else {}
+    result = triage(args.query, client, today=args.today, payload_room=args.room, session_id=args.session_id, **log)
     print(json.dumps(result.to_dict(), ensure_ascii=False, indent=2))
     return 0
 

@@ -274,3 +274,24 @@ def test_golden_missing_room_asks_for_clarification():
     result = run("The AC isn't working and it's really hot, please help!", MockClient())
     assert result.tasks == [] and result.room_status == "missing" and result.needs_clarification
     assert "room number" in result.reply
+
+
+# --- Usage logging (AGENTS.md: every attempt, success or error, goes to logs/usage.jsonl) -------
+
+def test_every_attempt_is_logged_with_the_agents_md_fields(_usage_log_in_tmp):
+    client = ScriptedClient(TransientError("HTTP 503"),
+                            model_json("Breakfast is 07:00-10:30.", intent="question", cited=["breakfast"]))
+    result = triage("When is breakfast?", client, today=TODAY, sleep=lambda s: None, session_id="s-42")
+    lines = [json.loads(line) for line in _usage_log_in_tmp.read_text().splitlines()]
+    assert [(r["attempt"], r["status"]) for r in lines] == [(1, "error"), (2, "success")]
+    required = {"timestamp", "session_id", "request_id", "status", "attempt", "prompt_tokens",
+                "completion_tokens", "latency_ms"}
+    assert all(required <= r.keys() for r in lines)
+    assert {r["session_id"] for r in lines} == {"s-42"} and {r["request_id"] for r in lines} == {result.request_id}
+    assert result.cited_sections == ["breakfast"]
+
+
+def test_cost_uses_gemini_price_and_mock_is_free():
+    from src.llm import cost_usd
+    assert cost_usd("gemini-3.8-flash", 463, 89) == round((463 * 0.75 + 89 * 3.75) / 1e6, 8)
+    assert cost_usd("mock", 463, 89) == 0.0

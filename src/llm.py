@@ -31,6 +31,16 @@ PROVIDERS = (
     # Untested live (no OpenRouter key); may need its own reasoning setting for the same reason.
     Provider("openrouter", "OPENROUTER_API_KEY", "https://openrouter.ai/api/v1", "google/gemini-3.8-flash"),
 )
+# USD per million tokens (input, output), Gemini 3.8 Flash promotional price used in docs/spec.md napkin math.
+# Verify live before relying on cost figures; the standard price is 1.50 / 7.50.
+PRICES = {"gemini-3.8-flash": (0.75, 3.75), "google/gemini-3.8-flash": (0.75, 3.75)}
+
+
+def cost_usd(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+    price_in, price_out = PRICES.get(model, (0.0, 0.0))  # mock / unknown models cost 0
+    return round((prompt_tokens * price_in + completion_tokens * price_out) / 1_000_000, 8)
+
+
 TEMPERATURE = 0.1
 MAX_OUTPUT_TOKENS = 300
 MAX_INPUT_TOKENS = 1200

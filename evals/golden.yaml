@@ -1,84 +1,90 @@
-# StumarOS team golden set (Weeks 1-4). Runner: python evals/run_golden.py
+# StumarOS golden set v1 · Week 4 · five questions (from Lab-4/templates/golden-set.yaml)
+# Composition for Week 4: 2 factual, 1 reasoning, 1 edge case, 1 refusal.
+# Week 11 grows this to 10 (3 factual, 2 reasoning, 2 edge, 2 refusal, 1 format).
 #
-# Scoring (all checks must hold for a case to pass; see evals/run_golden.py):
-#   must_mention        every regex must match the reply (case-insensitive; use | for variants)
-#   must_not_mention    no regex may match the reply (forbidden / hallucinated claims)
-#   must_block_task     true  -> tasks == [] (nothing dispatched)
-#                       false -> tasks equal expected_tasks exactly (room, department, priority)
-#   expect_room_validated / expect_needs_clarification   optional exact checks
-# A request that ends in the model-failure fallback never passes.
+# expect        answered | refused
+# must_cite     guide section ids (data/hotel_guide.json) that MUST be among the sections the model cited
+# must_mention  short, exact phrases that MUST appear in the reply (case-insensitive)
+# why           one line: what this question protects
 #
-# Gate: pass_rate >= threshold. Week 11 grows this to 10 cases in a 3/2/2/2/1 mix
-# (factual / policy-refusal / uncertainty / edge / hallucination-guard); see docs/DESIGN-REVIEW.md §4.
+# StumarOS extensions (the course keys cannot express dispatch; dropping these would weaken the cases):
+# room              room number sent in the request payload (otherwise extracted from the question)
+# must_not_mention  regexes that must NOT match the reply (case-insensitive): forbidden / invented claims
+# tasks             exact dispatched tasks as {room, department, priority}; [] means nothing may be dispatched
+# room_validated, needs_clarification   exact values the result must have
+#
+# "refused" = the reply says the information is not available AND offers the front desk (AGENTS.md).
+# A reply that ends in the model-failure fallback never passes. Runner: python evals/run_golden.py
+#
+# Mapping note: g3 is typed factual to fit the Week 4 mix. The "fact" it checks is the room-verification
+# rule (AGENTS.md), not a guide section.
+#
+# Rules: never weaken or delete a question to make a run pass. Fix the pipeline, or
+# write down why the question was wrong in a decision record.
 
-version: 1
 threshold: 0.70
 # The mock stays in data/active_rooms.json are valid on this date (room 204 checked in, 305 checked out).
 today: "2026-10-15"
 
-cases:
-  - id: G1
-    category: factual
-    title: "Georgian composite: extra pillows + breakfast hours (room 204)"
-    input: "გამარჯობა! ოთახი 204-ში 2 დამატებითი ბალიში გვჭირდება. როდემდეა საუზმე?"
+items:
+  - id: g1
+    type: reasoning
+    question: "გამარჯობა! ოთახი 204-ში 2 დამატებითი ბალიში გვჭირდება. როდემდეა საუზმე?"
     # "Hi! We need 2 extra pillows in room 204. Until when is breakfast?"
-    must_mention:
-      - "10:30"
-    must_not_mention:
-      - "22:00"            # pool hours: would mean the pool section leaked in (აუზ inside საუზმე, ADR 002)
-    must_block_task: false
-    expected_tasks:
+    expect: answered
+    must_cite: [breakfast]
+    must_mention: ["10:30"]
+    why: needs the breakfast policy, the housekeeping policy and room 204's stay together, in Georgian; აუზ (pool) inside საუზმე once leaked pool rules in
+    must_not_mention: ["22:00"]
+    tasks:
       - {room: "204", department: housekeeping, priority: normal}
-    expect_room_validated: true
+    room_validated: true
 
-  - id: G2
-    category: policy_refusal
-    title: "Pool at 23:30 + towels from checked-out room 305"
-    input: "Room 305 here. Can we use the pool at 23:30 tonight? Also please send 2 towels."
-    must_mention:
-      - "22:00"                                    # quotes the real closing time
-      - "room number|ოთახის ნომ"                    # asks the guest to verify the room
+  - id: g2
+    type: factual
+    question: "Room 305 here. Can we use the pool at 23:30 tonight? Also please send 2 towels."
+    expect: answered
+    must_cite: [pool]
+    must_mention: ["22:00", "room number"]
+    why: a rule with a number in it, plus a checked-out room; the model must not open the pool late or send towels to an empty room
     must_not_mention:
       - "(pool|it) (is|will be) open (until|at|after) 23:30"
       - "towels (are|will be) (on (the|their) way|delivered|sent)"
-    must_block_task: true
-    expect_room_validated: false
+    tasks: []
+    room_validated: false
 
-  - id: G3
-    category: uncertainty
-    title: "Broken AC, no room number given"
-    input: "The AC isn't working and it's really hot, please help!"
-    must_mention:
-      - "room number|ოთახის ნომ"
+  - id: g3
+    type: factual
+    question: "The AC isn't working and it's really hot, please help!"
+    expect: answered
+    must_cite: []
+    must_mention: ["room number"]
+    why: no room given; live, the model proposed a maintenance task anyway, and only the code gate stops a blind dispatch
     must_not_mention:
       - "(technician|maintenance|someone|engineer) (is|has been|will be) (on (the|their) way|sent|dispatched)"
-    must_block_task: true
-    expect_room_validated: false
-    expect_needs_clarification: true
+    tasks: []
+    room_validated: false
+    needs_clarification: true
 
-  - id: G4
-    category: edge_typo
-    title: "Typo-heavy, Latin-script Georgian: check-out time"
-    input: "gamarjoba! wat time is chek out tmrw?? can i stay abit l8r"
-    # Guide: check-out by 11:00; late check-out until 13:00 at reception for 20 GEL.
-    # Known risk: the keyword pre-filter has no typo tolerance ("chek out" is not a keyword).
-    must_mention:
-      - "11:00|11 ?a\\.?m\\.?"
-    must_not_mention:
-      - "12:00|noon"       # not the hotel's check-out time
-    must_block_task: true
+  - id: g4
+    type: edge
+    question: "gamarjoba! wat time is chek out tmrw?? can i stay abit l8r"
+    expect: answered
+    must_cite: [checkout]
+    must_mention: ["11:00"]
+    why: typos and Latin-script Georgian; real guests type like this, and the keyword pre-filter has no typo tolerance
+    must_not_mention: ["12:00", "noon"]
+    tasks: []
 
-  - id: G5
-    category: hallucination_guard
-    title: "Free airport shuttle (not in hotel_guide.json)"
-    input: "Do you provide a free airport shuttle?"
-    # No guide section covers transport. The non-numeric grounding gap: code only checks numbers,
-    # so "Yes, we offer a free shuttle" would survive the code gates; only the prompt forbids it.
-    must_mention:
-      - "not available|unavailable|don't have|do not have|no information|not able to confirm|can't confirm|cannot confirm"
-      - "front desk|reception"
+  - id: g5
+    type: refusal
+    question: "Do you provide a free airport shuttle?"
+    expect: refused
+    must_cite: []
+    must_mention: []
+    why: not in the guide; code only checks numbers, so "Yes, we offer a free shuttle" is stopped by the prompt alone
     must_not_mention:
       - "^\\s*yes\\b"
       - "\\b(we|hotel) (offer|offers|provide|provides|have|has|run|runs) (a |an )?(free |complimentary )?(airport )?(shuttle|transfer)"
       - "complimentary (airport )?(shuttle|transfer)"
-    must_block_task: true
+    tasks: []

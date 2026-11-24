@@ -107,6 +107,7 @@ class TriageResult:
     sections_sent: list[str]
     guardrail_events: list[str] = field(default_factory=list)
     usage: Usage = field(default_factory=Usage)
+    cited_sections: list[str] = field(default_factory=list)  # as the model reported them (golden must_cite)
 
     def to_dict(self) -> dict:
         return asdict(self)
