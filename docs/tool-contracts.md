@@ -44,6 +44,7 @@ There is no `room` or `guest` argument. A model that sends one is refused (funct
 | not offered to this caller | refused, nothing runs | `tests/test_act.py::test_a_tool_not_offered_is_not_run` (room tool, visitor) |
 | identity in the arguments (`room: "305"`) | refused (function calling), ignored (MCP) | `test_model_cannot_choose_the_room`, `tests/test_mcp.py::test_an_extra_room_argument_never_reaches_the_tool`, golden `team:a1` |
 | adversarial: a path in the id (`../../.env`) | refused | golden `team:a2` |
+| the server as a host launches it (real `python -m src.mcp_server` stdio subprocess) | lists `lookup_policy`; a valid call returns the text; `airport_shuttle` comes back as an error result | `tests/test_mcp.py::test_the_server_starts_as_a_real_stdio_subprocess` |
 
 **Log line.** `logs/tools.jsonl`, one line per call: `ts`, `tool`, the raw `arguments`, `ok`, `error`, `room` (a 12-character hash of the verified room, or null), `latency_ms`. It deliberately leaves out the room number and any guest name. The model call that requested the tool is logged separately in `logs/usage.jsonl`.
 

@@ -42,4 +42,6 @@
 
 ## Week 5 · Tool Contract
 
-> **TO WRITE by @Luka-Dumbadze, in your own words** (the Lab 5 studio entry, and the first entry of your HW2 `journal.md`): the pattern, one place you used it, what you delegated to AI, how you verified it, one thing you would do differently. No agent-written text here.
+> **TO WRITE by @Luka-Dumbadze, in your own words: 2 to 3 sentences, no agent-written text** (Turnitin applies). This is the Lab 5 studio entry and the first entry of your HW2 `hw2/Luka-Dumbadze/journal.md`. Shape from `Lab-5/examples/hw2-example/journal.md`. Facts you can point to (not reflections): [delegation-log entries 11 and 12](../delegation-log.md), [`docs/tool-contracts.md`](../tool-contracts.md), [decision 0005](../decisions/0005-caller-room-from-the-session.md).
+
+**Where I used it:** [one concrete place you applied the Tool Contract pattern in StumarOS this week]. **What I noticed:** [one thing the contract, the gates or a test caught or made you rethink]. **Do differently:** [one thing you would change next time, e.g. in how you delegated or verified].

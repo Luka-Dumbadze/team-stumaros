@@ -1,12 +1,17 @@
 """The MCP door: same contracts, annotations, identity from the server, in-memory client."""
 import asyncio
+import sys
+from pathlib import Path
 
 import pytest
 from mcp import Client
+from mcp.client.stdio import StdioServerParameters, get_default_environment
 from mcp.server.mcpserver.exceptions import ToolError
 
 from src import tools
 from src.mcp_server import mcp, verified_caller_room
+
+ROOT = Path(__file__).resolve().parents[1]
 
 
 def run(coro):
@@ -73,3 +78,21 @@ def test_the_caller_room_comes_from_the_server_and_is_verified(monkeypatch, env,
     else:
         with pytest.raises(ToolError, match="Not verified"):
             verified_caller_room()
+
+
+async def over_stdio(env):
+    """The server as a host launches it: a real `python -m src.mcp_server` subprocess speaking stdio."""
+    server = StdioServerParameters(command=sys.executable, args=["-m", "src.mcp_server"], cwd=str(ROOT),
+                                   env={**get_default_environment(), **env})
+    async with Client(server, read_timeout_seconds=30) as c:
+        names = [t.name for t in (await c.list_tools()).tools]
+        ok = await c.call_tool("lookup_policy", {"section": "pool"})
+        bad = await c.call_tool("lookup_policy", {"section": "airport_shuttle"})
+        return names, ok, bad
+
+
+def test_the_server_starts_as_a_real_stdio_subprocess():
+    names, ok, bad = run(over_stdio({"STUMAROS_ROOM": "204", "STUMAROS_TODAY": "2026-10-15"}))
+    assert names == ["lookup_policy"]
+    assert not ok.is_error and ok.structured_content["text"].startswith("The rooftop pool is open 08:00-22:00")
+    assert bad.is_error and "airport_shuttle" in bad.content[0].text

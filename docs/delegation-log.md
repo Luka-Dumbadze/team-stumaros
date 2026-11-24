@@ -172,3 +172,21 @@ Everything below is AI-drafted and **not yet reviewed by a teammate**. It goes t
   - "Never put a user, student or account id in a tool's arguments (for StumarOS: no room or guest field …)"
   - "Never add a tool that deletes or sends without asking first"
 - **Cost:** no live API calls.
+
+### Entry 12 · Lab 5 verification pass
+- **Task:** audit `feat/lab5-tools-mcp` against `Lab-5/README.md` and `examples/campuspulse-tools/`, check the MCP server as a real subprocess, try Lab 5 Checkpoint 1 live (at most 2 questions), then push and open a draft PR.
+- **Delegated to:** Claude Code (Opus 5.5). Rung 3: Luka reviews the diff.
+- **Found and fixed:**
+  - `AGENTS.md` "How to run" pointed at `uvicorn app.main:app` and "You may" at `app/`, which do not exist. Changed to `src.app:app`, `python -m src.mcp_server`, `pytest -q tests` and `src/`.
+  - The MCP door was tested only in memory. Added `tests/test_mcp.py::test_the_server_starts_as_a_real_stdio_subprocess`: it launches `python -m src.mcp_server` over stdio (`STUMAROS_ROOM=204`), lists tools (`['lookup_policy']`), makes one valid call (`pool`, text returned) and one invalid call (`airport_shuttle`, error result with the SDK's validation message). No startup or import errors.
+  - The Week 5 journal placeholder now follows the course shape (Where I used it / What I noticed / Do differently), with empty brackets. No reflection text was written.
+- **Checked, no change needed:** CI installs `requirements.txt` on Python 3.11, and every new dependency supports it (FastAPI 0.165 needs ≥3.11). `.gitignore` has `logs/`, so `logs/tools.jsonl` and `logs/usage.jsonl` stay out of `git status`. `tests/test_tool_golden.py` is still byte-identical to the template. `evals/tools/.gitkeep` is present. `call_tool()` returns `ok`, `error` and `result`, the keys the HW2 runner reads.
+- **Checkpoint 1, offline (mock model, temp log):** "What are the pool hours?" as room 204 gave `answered` with the pool text. A bad call (`{"section": "Pool", "room": "305"}`, visitor) was refused before the tool ran. Both lines were written:
+  ```
+  {"tool": "lookup_policy", "arguments": "{\"section\": \"pool\"}", "ok": true, "error": null, "room": "fc56dbc6d465", ...}
+  {"tool": "lookup_policy", "arguments": "{\"section\": \"Pool\", \"room\": \"305\"}", "ok": false, "error": "invalid arguments: room: Extra inputs are not permitted; section: Input should be 'breakfast', 'pool', …", "room": null, ...}
+  ```
+- **Checkpoint 1, live:** **not passed: provider error.** Question 1 ("What are the pool hours?", room 204, Google AI Studio `gemini-3.8-flash`) failed on its first model call with `transient: InternalServerError` (HTTP 5xx) after 791 ms, logged in `logs/usage.jsonl` (request `805d349a3897`, `status: error`). `act()` returned `failed` with the front-desk message. As agreed, the pass stopped there: question 2 was not sent. The real model calling `lookup_policy` is still unverified, as is the `extra_content` echo.
+- **Not done (needs Luka):** connecting an MCP host (`claude mcp add …`, then `/mcp`) and pasting one host question and answer into the PR description (Lab 5 Part 3 step 4).
+- **Results:** `pytest -q tests` 115 passed. Offline golden 4/5 (gate PASS; g4 is the known misspelled-checkout case). Remote CI: see draft PR #2.
+- **Cost:** 1 live model call (failed, $0).
