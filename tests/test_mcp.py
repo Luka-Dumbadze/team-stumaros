@@ -93,6 +93,6 @@ async def over_stdio(env):
 
 def test_the_server_starts_as_a_real_stdio_subprocess():
     names, ok, bad = run(over_stdio({"STUMAROS_ROOM": "204", "STUMAROS_TODAY": "2026-10-15"}))
-    assert names == ["lookup_policy"]
+    assert sorted(names) == sorted(tools.TOOLS)          # every registered tool, and nothing else
     assert not ok.is_error and ok.structured_content["text"].startswith("The rooftop pool is open 08:00-22:00")
     assert bad.is_error and "airport_shuttle" in bad.content[0].text

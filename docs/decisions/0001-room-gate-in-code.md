@@ -18,3 +18,4 @@
 - A careless or injected reply cannot dispatch staff to an unverified room. Evidence: the parametrised room-status tests in `tests/test_feature.py`, golden g2 and g3, and a deliberate gate breakage that failed 6 tests.
 - Guests without a room number get one clarification round-trip (`docs/confidence-policy.md`).
 - **Known bug (Week 4, not fixed):** the urgent keywords have no word boundaries. "Bottles of *water*", "7 o'c*lock*" and "towels outside the *door*" become `urgent`. Fix with word boundaries, a fault-intent check and regression tests.
+  - **Fixed in Week 5 (issue #3):** `is_urgent()` in `src/pipeline.py` uses word boundaries and needs a fault word for water, door, lock and AC. Both the triage pipeline and `create_service_task` use it. Regression tests: `tests/test_create_service_task.py::test_ordinary_requests_are_not_urgent` and `::test_the_triage_pipeline_no_longer_over_escalates`.

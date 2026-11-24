@@ -13,8 +13,17 @@ from . import prefilter
 from .llm import MAX_INPUT_TOKENS, ModelClient, build_messages, call_with_budget, cost_usd, estimate_prompt_tokens
 from .schemas import ModelOutput, Task, TriageResult, Usage
 
-URGENT_KEYWORDS = re.compile(r"leak|flood|water|lock|door|\bac\b|air[- ]?condition|კონდიციონერ|წყალ|საკეტ|კარი",
-                             re.IGNORECASE)
+# Decision 0001: safety faults are urgent whatever the model proposed. Shared by the triage pipeline and the
+# create_service_task tool. Two kinds of words, matched on word boundaries (so "o'clock" is not "lock"):
+#   * always a fault: leaking, flooding, a burst pipe, locked out
+#   * fault-prone nouns that also appear in ordinary requests ("2 bottles of water", "towels outside the door"):
+#     water, door, lock, AC. These count only together with a fault word (broken, not, won't, stuck, არ, ...).
+_ALWAYS_URGENT = re.compile(r"\b(?:leak\w*|flood\w*|burst\w*|locked out)\b|ჟონავ\w*|დატბორ\w*", re.IGNORECASE)
+_FAULT_PRONE = re.compile(r"\b(?:water|door\w*|lock\w*|ac|a/c|air[- ]?condition\w*)\b"
+                          r"|\bწყ(?:ალ|ლ)\w*|\bკარ(?:ი|ის|ს|ზე|თან|ში)?\b|საკეტ\w*|კონდიციონერ\w*", re.IGNORECASE)
+_FAULT = re.compile(r"(?<!\bdo )\bnot\b|(?<!\bdo)n['’]t\b|\bcannot\b"     # "won't close", not "don't knock"
+                    r"|\b(?:broken?|broke|stuck|jamm\w*|fail\w*|drip\w*|out of order)\b"
+                    r"|\bარ\b|\bვერ\b|გაფუჭ\w*|დაზიან\w*|გატეხ\w*|გაჭედ\w*", re.IGNORECASE)
 SUPPLY_KEYWORDS = re.compile(r"towel|pillow|blanket|toiletr|shampoo|soap|sheets|პირსახოც|ბალიშ|საბან", re.IGNORECASE)
 ASKS_VERIFICATION = re.compile(r"room number|ოთახის ნომ", re.IGNORECASE)
 MENTIONS_FRONT_DESK = re.compile(r"front desk|reception|მიმღებ", re.IGNORECASE)
@@ -55,9 +64,14 @@ def _numbers(text: str) -> set[str]:
     return {n.lstrip("0") or "0" for n in re.findall(r"\d+", text)}
 
 
+def is_urgent(text: str) -> bool:
+    """A leak, flood, door or lock failure, or AC fault (AGENTS.md), in English or Georgian."""
+    return bool(_ALWAYS_URGENT.search(text) or (_FAULT_PRONE.search(text) and _FAULT.search(text)))
+
+
 def apply_priority_override(task: Task) -> str | None:
     """Root AGENTS.md: leaks, door/lock and AC issues are urgent; extra supplies never are."""
-    if URGENT_KEYWORDS.search(task.task) and task.priority != "urgent":
+    if is_urgent(task.task) and task.priority != "urgent":
         old, task.priority = task.priority, "urgent"
         return f"priority_override: {old}->urgent ({task.task!r})"
     if SUPPLY_KEYWORDS.search(task.task) and task.priority == "urgent":
