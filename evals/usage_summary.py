@@ -36,7 +36,9 @@ def summarize(lines: list[dict]) -> dict:
     per_req = [{"tokens_in": sum(x["prompt_tokens"] for x in a), "tokens_out": sum(x["completion_tokens"] for x in a),
                 "latency_ms": sum(x.get("latency_ms", 0) for x in a), "cost_usd": sum(x.get("cost_usd", 0) for x in a),
                 "attempts": len(a)} for a in answered]
-    return {"log": str(default_usage_log()), "live_attempts": len(live),
+    log = default_usage_log()
+    shown = log.relative_to(ROOT) if log.is_relative_to(ROOT) else log.name  # never commit a home-directory path
+    return {"log": str(shown), "live_attempts": len(live),
             "live_attempts_failed": sum(r["status"] != "success" for r in live),
             "live_requests": len(requests), "answered_requests": len(answered),
             "median": {k: med([p[k] for p in per_req]) for k in ("tokens_in", "tokens_out", "latency_ms", "cost_usd")},

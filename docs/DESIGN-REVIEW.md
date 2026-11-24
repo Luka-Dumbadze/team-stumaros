@@ -88,7 +88,7 @@ flowchart LR
 | Feature | Model | Tokens in / out (median) | Cost per request | Latency (median) | Source |
 |---|---|---|---|---|---|
 | triage, live | gemini-3.8-flash | 463 / 89 | $0.00068 | 5.35 s (p95 8.36 s) | the 9 successful live answers from 2026-10-15, with API `usage` ([`hw1/Luka-Dumbadze/golden.md`](../hw1/Luka-Dumbadze/golden.md)) |
-| `logs/usage.jsonl` | n/a | none yet | n/a | n/a | [`2026-11-24-1644-usage.json`](../evals/results/2026-11-24-1644-usage.json): 18 live attempts, 0 answered |
+| `logs/usage.jsonl` | n/a | none yet | n/a | n/a | [`2026-11-24-1647-usage.json`](../evals/results/2026-11-24-1647-usage.json): 18 live attempts, 0 answered |
 
 Prices are $0.75 / $3.75 per million tokens (in / out, promotional; verify before shipping).
 
