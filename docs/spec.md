@@ -9,7 +9,7 @@ Front-desk staff at boutique hotels are overwhelmed by repetitive guest inquirie
 Front-desk managers and solo shift receptionists at boutique hotels (15–60 rooms) who manage guest WhatsApp messages on a shared front-desk phone while checking in arrivals. Secondary: Hotel guests messaging for services before and during their stay.
 
 ## Success criteria
-*Evaluated across 3 runs of a 24-scenario golden set in /evals using google/gemini-2.5-flash. Mix: ≥8 answerable policy questions, ≥4 unanswerable questions, ≥6 valid-room requests, ≥4 invalid-room requests (spanning unknown room, status != "checked_in", and date outside stay), and ≥2 composite requests. Each scenario fixture defines `expected_facts`, `forbidden_claims`, and `expected_tasks`. Each fact and claim is a list of case-insensitive regex variants (e.g. `10:30|10\.30|half past ten`); text checks pass on any variant match.*
+*Evaluated across 3 runs of a 24-scenario golden set in /evals using `gemini-3.8-flash` (Google AI Studio; `google/gemini-3.8-flash` via OpenRouter, decision 0003). Until the 24-scenario harness exists, the 5-question Week 4 set in `evals/golden.yaml` stands in (DESIGN-REVIEW §4). Mix: ≥8 answerable policy questions, ≥4 unanswerable questions, ≥6 valid-room requests, ≥4 invalid-room requests (spanning unknown room, status != "checked_in", and date outside stay), and ≥2 composite requests. Each scenario fixture defines `expected_facts`, `forbidden_claims`, and `expected_tasks`. Each fact and claim is a list of case-insensitive regex variants (e.g. `10:30|10\.30|half past ten`); text checks pass on any variant match.*
 
 1. **Latency & Execution Budget:**
    - Wall-clock end-to-end `POST /chat` latency: p95 ≤ 3,000 ms, max ≤ 6,000 ms per request (eval harness wall-clock, retries included).
@@ -42,7 +42,11 @@ An AI-powered messaging agent that intercepts guest inquiries via a web-chat int
 3. Any service request referencing a room that is unknown, not currently checked-in, or outside active stay dates politely asks the guest to verify their details instead of generating a task.
 
 ## Napkin math
-300 req/day × (3,200 × $0.15 + 180 × $0.60) / 1M × 30 ≈ $5.30/month on gemini-2.5-flash.
+Gemini 3.8 Flash at $0.75 / $3.75 per 1M tokens (in / out, promotional; verify before shipping). Medians come from the 9 successful HW1 live answers (463 in / 89 out). They are replaced by `logs/usage.jsonl` medians (`evals/usage_summary.py`) after the next live run. These match DESIGN-REVIEW §5.
+- **Per request:** 463 × $0.75 + 89 × $3.75 per 1M ≈ **$0.00068**.
+- **Monthly at 200 req/day:** 200 × 30 × $0.00068 ≈ **$4.09/month**.
+- **Georgian:** 463 in / 145 out (output ≈ 1.6x English) ≈ $5.35/month for all-Georgian traffic.
+- **Long-context alternative** (whole guide + room list, ≈ 2,560 in): ≈ $13.50/month, 3.3x the pre-filtered prompt.
 
 ## Risks and safety
 - Hallucinated amenities (e.g., promising a non-existent airport shuttle) create angry front-desk confrontations. Mitigation: Strict prompt constraint to refuse unlisted services.

@@ -1,0 +1,7 @@
+[
+  {"room": "204", "guest_name": "Nino Beridze", "check_in": "2026-10-13", "check_out": "2026-10-17", "status": "checked_in"},
+  {"room": "305", "guest_name": "Giorgi Kapanadze", "check_in": "2026-10-10", "check_out": "2026-10-14", "status": "checked_out"},
+  {"room": "112", "guest_name": "Ana Lomidze", "check_in": "2026-10-18", "check_out": "2026-10-20", "status": "reserved"},
+  {"room": "410", "guest_name": "Tamar Gelashvili", "check_in": "2026-10-14", "check_out": "2026-10-16", "status": "checked_in"},
+  {"room": "501", "guest_name": "David Tsiklauri", "check_in": "2026-10-01", "check_out": "2026-10-12", "status": "checked_in"}
+]

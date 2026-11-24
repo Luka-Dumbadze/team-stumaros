@@ -8,7 +8,7 @@ An AI guest operations assistant for boutique hotels that handles incoming guest
 ## Stack
 - Language: Python 3.11
 - Framework: FastAPI
-- Model access: OpenRouter · default model: `google/gemini-2.5-flash`
+- Model access: OpenAI SDK against an OpenAI-compatible endpoint (`src/llm.py` `PROVIDERS`, decision 0003): `GEMINI_API_KEY` → Google AI Studio `gemini-3.8-flash` (thinking off), else `OPENROUTER_API_KEY` → OpenRouter `google/gemini-3.8-flash`, else the offline mock. (`gemini-2.5-flash` returns HTTP 404 for new users; do not use it.)
 - Data: `data/hotel_guide.json` and `data/active_rooms.json` (checked into repo, read-only)
 
 ## How to run
@@ -47,7 +47,7 @@ pytest
 - **Max 3 Calls:** Cap model invocations at 3 per incoming request. This budget covers transient HTTP errors (5xx/429) and at most 1 corrective schema-retry if structured JSON parsing fails.
 - **Usage Logging:** Every single LLM attempt (successful, failed, or retried) must append a record to `logs/usage.jsonl` with:
   `{ "timestamp": str, "session_id": str, "request_id": str, "status": "success" | "error", "attempt": int, "prompt_tokens": int, "completion_tokens": int, "latency_ms": int }`.
-- **Secrets:** Environment variables only (`OPENROUTER_API_KEY`). Never hardcode or log API keys.
+- **Secrets:** Environment variables only (`GEMINI_API_KEY` or `OPENROUTER_API_KEY`, or a git-ignored `.env`). Never hardcode or log API keys.
 
 ## You may
 - Create and edit code in `app/`, `tests/`, `docs/`, `evals/`
