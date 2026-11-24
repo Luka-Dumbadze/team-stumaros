@@ -3,6 +3,11 @@
 ## What was delegated
 Almost everything in this folder was produced by Claude Code (Opus 5.5) from one long operator prompt: the slice choice, `spec.md`, `AGENTS.md`, all of `src/`, the tests, the golden runs, and the first drafts of this log and the journal. Before that, in the same session, I used it to critique the team `docs/spec.md` and `AGENTS.md`. I decided the scope cuts there myself. Later I also delegated the switch to a free Google AI Studio key and the live verification runs.
 
+## Autonomy Ladder rung used
+- **Rung 3 for the build and verification.** Agent executes; the human checks results afterwards. This covers `src/`, the tests, the golden runs and the live verification. Claude Code wrote and ran multi-file code and made live API calls from one operator prompt. I steered it and checked its *outputs* (golden replies, test runs, the live JSON). I did **not** review each line before it ran. That is why the line-by-line sign-off below is still open.
+- **Rung 2 for spec and scope decisions.** AI proposes, human decides. The AI critiqued the team `docs/spec.md` and `AGENTS.md` and proposed changes. I made the calls: I rejected the LLM-as-judge (item 3 below), dropped the extra confirmation turn, and kept priorities in code.
+- **Not higher.** The agent's claims were accepted only with evidence: the live runs in `golden.md` and the test names cited in this log.
+
 ## Portability: one SDK, two providers
 Moving from OpenRouter to Google AI Studio needed **no rewrite of the request code**. The same OpenAI SDK call (`chat.completions.create` with `response_format=json_object`) works against Google's OpenAI-compatible endpoint (`/v1beta/openai/`). Only `base_url`, the key and the model name change, and those live in one table (`llm.PROVIDERS`). What did *not* port for free was model behaviour, and configuration had to absorb it:
 - `gemini-2.5-flash` is still returned by `models.list` but answers HTTP 404 ("no longer available to new users"). The default became `gemini-3.8-flash`, which Google's error message suggests and which the spec already priced.
@@ -32,4 +37,18 @@ Both are one-line provider settings, not code changes.
 - [ ] Read `src/pipeline.py` guardrails and `src/prefilter.py` line by line.
 - [x] Live run of the three golden cases with real `usage` in `golden.md`: done by the agent on 2026-10-15, still to be reviewed by me.
 - [ ] Try one adversarial non-numeric hallucination prompt live and record the result.
+  *(Update 2026-11-24: attempted as team golden case G5, "Do you provide a free airport shuttle?". Both live attempts hit a Gemini outage (HTTP 500/503, timeouts), so the result is still unobserved. See `evals/results/README.md` at the repo root.)*
 - [ ] Run `src/bench.py --n 20` to complete spec criterion 5. This needs a fresh daily quota or a paid key.
+
+## Manual line-by-line sign-off (Luka Dumbadze)
+> **PENDING.** @Luka-Dumbadze must complete this personally. An agent must not tick these boxes or fill in the signature.
+
+| File | Read line by line | Date | Issues found / notes |
+|---|---|---|---|
+| `src/pipeline.py` (room gate, priority override, grounding) | [ ] | | Known since Week 4: urgent keywords over-escalate ("water", "o'clock", "door"); see root `docs/decisions/001-room-gate-in-code.md` |
+| `src/prefilter.py` (room extraction/validation, section selection) | [ ] | | |
+| `src/llm.py` (prompt, provider table, 3-call budget) | [ ] | | |
+| `src/schemas.py` (output validation) | [ ] | | |
+| `golden.md` live outputs match what I would sign off on | [ ] | | |
+
+I confirm that I have read the code above line by line and understand what it does: **Signature:** __________ **Date:** __________
