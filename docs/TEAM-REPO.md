@@ -8,9 +8,9 @@
 
 ## 1 · Our team (fill in together, Lab 2)
 
-> **Proposed 2026-11-24, confirmed when both members sign `TEAM-CONTRACT.md`.** The roles follow the contract; the evidence is in its "Who built what" section.
+> **Proposed 2026-11-24, confirmed when every member signs `TEAM-CONTRACT.md`** (Luka signed 2026-11-24). The roles follow the contract; the evidence is in its "Who built what" section.
 
-Members: Luka Dumbadze ([@Luka-Dumbadze](https://github.com/Luka-Dumbadze)) · Urju ([@UrjuHub](https://github.com/UrjuHub))
+Members: Luka Dumbadze ([@Luka-Dumbadze](https://github.com/Luka-Dumbadze)) · Urju ([@UrjuHub](https://github.com/UrjuHub)) · Mariami Tskhomelidze ([@ZONDROK](https://github.com/ZONDROK))
 
 | Member | GitHub username | Standing role |
 |---|---|---|
@@ -18,6 +18,7 @@ Members: Luka Dumbadze ([@Luka-Dumbadze](https://github.com/Luka-Dumbadze)) · U
 | Urju | UrjuHub | Spec keeper |
 | Luka Dumbadze | Luka-Dumbadze | Eval keeper (from Week 4) |
 | Urju | UrjuHub | Data & content keeper: `data/`, privacy, guide accuracy |
+| Mariami Tskhomelidze | ZONDROK | [to agree: roles rebalance across three members at the first sync] |
 
 - **Repo keeper:** owns the repo; access, settings, branch rules, CI, tags. Makes the "ask first" changes to `.github/`.
 - **Spec keeper:** `docs/spec.md` and `AGENTS.md` stay true and current.
@@ -27,7 +28,7 @@ Teams of two: each person holds two roles. Roles decide who keeps a file honest,
 
 **Slice rota (recommended):** the person who drives the agent rotates every slice, and the reviewer is the next person in the rota, so everyone drives at least one slice before Week 4.
 
-**Our rota:** Luka and Urju alternate. Week 4 catch-up: Luka drove, Urju reviews. First Week 5 slice (`POST /chat`): Urju drives, Luka reviews. Then we keep alternating.
+**Our rota:** Luka → Urju → Mariami, repeating; each slice's reviewer is the next person in the rota. Week 4 catch-up: Luka drove, Urju reviews. First Week 5 slice (`POST /chat`): Urju drives, Mariami reviews. Then Mariami drives, Luka reviews.
 
 Our capstone in one sentence: StumarOS answers boutique-hotel guests from the hotel's own policy and turns their requests into validated staff tasks, so a solo receptionist stops retyping WhatsApp messages.
 Repo: https://github.com/Luka-Dumbadze/team-stumaros · Instructor access: ZA-KIU collaborator (repo private, checked 2026-11-24) · Team OpenRouter key issued to: none yet; live runs use a personal Google AI Studio key held by Luka Dumbadze (never paste the key here)

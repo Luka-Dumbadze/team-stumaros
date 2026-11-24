@@ -1,6 +1,6 @@
 # Design Review · StumarOS (სტუმაროს) · team-stumaros
 
-Members: Luka Dumbadze · [@Luka-Dumbadze](https://github.com/Luka-Dumbadze) · Urju · [@UrjuHub](https://github.com/UrjuHub) · roles: [`docs/TEAM-REPO.md`](TEAM-REPO.md) §1 · Repo: https://github.com/Luka-Dumbadze/team-stumaros · Graded commit: tag `design-review` (2026-10-20); this revision follows instructor feedback.
+Members: Luka Dumbadze · [@Luka-Dumbadze](https://github.com/Luka-Dumbadze) · Urju · [@UrjuHub](https://github.com/UrjuHub) · Mariami Tskhomelidze · [@ZONDROK](https://github.com/ZONDROK) · roles: [`docs/TEAM-REPO.md`](TEAM-REPO.md) §1 · Repo: https://github.com/Luka-Dumbadze/team-stumaros · Graded commit: tag `design-review` (2026-10-20); this revision follows instructor feedback.
 
 ## 1 · Problem, users, success criteria
 
@@ -43,7 +43,7 @@ flowchart LR
 | triage | `gemini-3.8-flash` (Google AI Studio); `google/gemini-3.8-flash` via OpenRouter as fallback | system prompt + ≤ 3 guide sections + `{room, status}` + message (≤ 1,000 chars); refused before the call above 1,200 tokens | `{intent, reply, tasks[], cited_sections, needs_clarification}` | `parse_model_output` (`src/schemas.py`), then `apply_guardrails` (`src/pipeline.py`) |
 | corrective retry | same | the previous output + the schema error | same | same; at most 1, inside the 3-call cap |
 
-**Room gate before the model.** Code validates the room first. The model sees only its number and status, never a guest name. Proposed tasks are dropped unless the status is `valid`. **Retrieval (the Lab 4 path)** is a keyword pre-filter over 9 guide sections, not embeddings ([decision 0002](decisions/0002-georgian-word-start-matching.md); the arithmetic is in §5). A question with no matching section takes the refusal route. **The Lab 3 feature is not multimodal:** v1 is text-only ([decision 0004](decisions/0004-text-only-v1.md), proposed). The Week 3 pattern we apply is the routing in [`docs/confidence-policy.md`](confidence-policy.md). **Human in the loop:** staff act on every task and escalation. Today the CLI prints them as JSON; a staff queue comes with `POST /chat`.
+**Room gate before the model.** Code validates the room first. The model sees only its number and status, never a guest name. Proposed tasks are dropped unless the status is `valid`. **Retrieval (the Lab 4 path)** is a keyword pre-filter over 9 guide sections, not embeddings ([decision 0002](decisions/0002-georgian-word-start-matching.md); the arithmetic is in §5). A question with no matching section takes the refusal route. **The Lab 3 feature is not multimodal:** v1 is text-only ([decision 0004](decisions/0004-text-only-v1.md), proposed). The Week 3 pattern we apply is the routing in [`docs/confidence-policy.md`](confidence-policy.md). **Human in the loop:** staff act on every task and escalation; a staff queue comes with `POST /chat`.
 
 ## 3 · Risks and safety threats
 
@@ -102,7 +102,7 @@ Prices are $0.75 / $3.75 per million tokens (in / out, promotional; verify befor
 
 ## 6 · Team, roles and decisions
 
-- **Team contract:** [`TEAM-CONTRACT.md`](../TEAM-CONTRACT.md) at the repo root. Roles and rules are proposed from the commit history: Luka is Repo + Eval keeper; Urju is Spec + Data & content keeper. **Not yet signed by commit (overdue since Week 3).** Roles: [`docs/TEAM-REPO.md`](TEAM-REPO.md) §1.
+- **Team contract:** [`TEAM-CONTRACT.md`](../TEAM-CONTRACT.md) at the repo root. Proposed roles: Luka is Repo + Eval keeper, Urju is Spec + Data & content keeper, Mariami's is to agree. **Signed by Luka; Urju and Mariami to sign (overdue since Week 3).** Roles: [`docs/TEAM-REPO.md`](TEAM-REPO.md) §1.
 - **Decision records** ([`docs/decisions/`](decisions/)):
   - [0001 room gate in code](decisions/0001-room-gate-in-code.md)
   - [0002 Georgian word-start matching](decisions/0002-georgian-word-start-matching.md)

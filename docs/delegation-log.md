@@ -130,3 +130,17 @@ Everything below is AI-drafted and **not yet reviewed by a teammate**. It goes t
 - **Decision:** committed on the branch and pushed as a **draft** PR. Merge waits for Urju's signing commit and review.
 - **AGENTS.md change:** none.
 - **Cost:** 3 live calls (all failed); 22 live calls that day in total.
+
+### Entry 10 · Sign-off recorded, third member added
+- **Task:** record Luka's line-by-line review in `hw1/Luka-Dumbadze/delegation.md`, sign Luka's line in `TEAM-CONTRACT.md`, add Mariami Tskhomelidze (@ZONDROK) to the team docs, and mark PR #1 ready for review.
+- **Delegated to:** Claude Code (Opus 5.5). Mariami's display name was read from their public GitHub profile; no email was fetched.
+- **Plan check:** none.
+- **Came back wrong / judgement calls to review:**
+  - **Sign-off scope:** only the `pipeline.py` and `prefilter.py` rows are ticked, because those are the files Luka said he reviewed. `llm.py`, `schemas.py` and the `golden.md` row stay open, and the signature statement names the two files instead of "the code above".
+  - **Which copy:** Luka reviewed the root `src/` copy. A `diff` shows its gate and guardrail logic matches the HW1 folder, and the note says so.
+  - **Who ticked:** the boxes and Luka's contract line were entered by the agent on Luka's explicit instruction, in a commit from his account. Both files say this.
+  - **Keeping files consistent:** Mariami was also added to the Design Review's Members line, §6 and the README, so no file lists two members. Mariami's roles are left "to agree", and the rota now runs Luka → Urju → Mariami.
+- **Caught by:** `diff` (HW1 vs root code, and TEAM-REPO §2–11 vs the course guide), the Design Review word count (1,597), the link checker.
+- **Decision:** committed, pushed, PR #1 marked ready for review.
+- **AGENTS.md change:** none.
+- **Cost:** no API calls.

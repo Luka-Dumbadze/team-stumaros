@@ -5,7 +5,7 @@ Almost everything in this folder was produced by Claude Code (Opus 5.5) from one
 
 ## Autonomy Ladder rung used
 - **Rung 3 was intended for the build:** the agent writes the code, and I read every line of the diff before it is merged (course definition, Lab 3/4 READMEs). This covers `src/`, the tests and the golden runs.
-- **In practice, verification sat below rung 3.** I checked the agent's *outputs* (golden replies, test runs, the live JSON), not every line of the diff. By the course's own measure, a rung-3 delegation whose diff is not read has silently moved to rung 4. That stays true until I complete the line-by-line review of `src/pipeline.py` and `src/prefilter.py` in the sign-off table at the end of this file.
+- **Verification sat below rung 3 until 2026-11-24.** Until then I had checked the agent's *outputs* (golden replies, test runs, the live JSON), not every line of the diff. By the course's own measure, a rung-3 delegation whose diff is not read has silently moved to rung 4. On 2026-11-24 I read `src/pipeline.py` and `src/prefilter.py` line by line (sign-off table below), which brings the gate and guardrail code to rung 3. `src/llm.py` and `src/schemas.py` are not yet reviewed line by line.
 - **Scope decisions were rung 2:** the agent suggested and I decided. It critiqued the team `docs/spec.md` and `AGENTS.md`; I rejected the LLM-as-judge (item 3 below), dropped the extra confirmation turn, and kept priorities in code.
 - **Evidence over trust:** the agent's claims were accepted only with evidence, namely the live runs in `golden.md` and the test names cited in this log.
 
@@ -42,14 +42,16 @@ Both are one-line provider settings, not code changes.
 - [ ] Run `src/bench.py --n 20` to complete spec criterion 5. This needs a fresh daily quota or a paid key.
 
 ## Manual line-by-line sign-off (Luka Dumbadze)
-> **PENDING.** @Luka-Dumbadze must complete this personally. An agent must not tick these boxes or fill in the signature.
+> **Completed 2026-11-24 for `src/pipeline.py` and `src/prefilter.py`.** I did the review myself. The boxes and signature were then entered by Claude Code on my explicit instruction. The other rows stay open until I review those files.
+>
+> **Which copy:** I reviewed the promoted copy at the repo root (`src/`; line numbers refer to it). Against this folder's `src/`, `diff` shows the room gate, guardrails, regexes and room logic are identical. The root copy only changes `DATA_DIR` to the root `data/` and adds usage logging (`write_usage`, `default_usage_log`, `session_id`, `cited_sections`).
 
 | File | Read line by line | Date | Issues found / notes |
 |---|---|---|---|
-| **Required for rung 3:** `src/pipeline.py` (room gate, priority override, grounding) | [ ] | | Known since Week 4: urgent keywords over-escalate ("water", "o'clock", "door"); see root `docs/decisions/0001-room-gate-in-code.md` |
-| **Required for rung 3:** `src/prefilter.py` (room extraction/validation, section selection) | [ ] | | |
+| **Required for rung 3:** `src/pipeline.py` (room gate, priority override, grounding) | [x] | 2026-11-24 | Verified the five invariants and the room gate (tasks are only built at L80, and only for a `valid` room). Known limitations accepted: urgent keywords over-escalate ("water", "o'clock", "door", `კარი`), and `needs_clarification` stays false when the verification request is appended (L151). See root `docs/decisions/0001-room-gate-in-code.md` |
+| **Required for rung 3:** `src/prefilter.py` (room extraction/validation, section selection) | [x] | 2026-11-24 | Verified room resolution/validation and word-start Georgian matching. Known limitation accepted: `კარი` (door) matches `კარიერა` (career) |
 | `src/llm.py` (prompt, provider table, 3-call budget) | [ ] | | |
 | `src/schemas.py` (output validation) | [ ] | | |
 | `golden.md` live outputs match what I would sign off on | [ ] | | |
 
-I confirm that I have read the code above line by line and understand what it does: **Signature:** __________ **Date:** __________
+I confirm that I have read `src/pipeline.py` and `src/prefilter.py` line by line and understand what they do: **Signature:** Luka Dumbadze **Date:** 2026-11-24

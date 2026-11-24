@@ -1,7 +1,7 @@
 # StumarOS (სტუმაროს)
 
 **Answers boutique-hotel guests from the hotel's own policy, and turns their requests into validated housekeeping, maintenance and front-desk tasks, in English or Georgian.**
-CS6920 capstone · Fall 2026 · team-stumaros · Luka Dumbadze, Urju
+CS6920 capstone · Fall 2026 · team-stumaros · Luka Dumbadze, Urju, Mariami Tskhomelidze
 
 > Status: Week 4. A CLI triage pipeline (`src/`) with a code-enforced room gate, priority overrides, grounding checks and a 5-question golden set. The FastAPI `POST /chat` service and session memory in `AGENTS.md` are the Week 5+ target.
 
@@ -47,4 +47,4 @@ data/     mock guide + stays       docs/     spec, review, decisions   hw1/     
 From Week 13: `docs/case-study.md`.
 
 ## Team and how we work
-Luka Dumbadze ([@Luka-Dumbadze](https://github.com/Luka-Dumbadze)) · Urju ([@UrjuHub](https://github.com/UrjuHub)) · Team rules: [docs/TEAM-REPO.md](docs/TEAM-REPO.md) · Spec: [docs/spec.md](docs/spec.md) · Delegation log: [docs/delegation-log.md](docs/delegation-log.md) · Journals: [docs/journal/](docs/journal/) · Team contract: [TEAM-CONTRACT.md](TEAM-CONTRACT.md) · Agent rules: [AGENTS.md](AGENTS.md)
+Luka Dumbadze ([@Luka-Dumbadze](https://github.com/Luka-Dumbadze)) · Urju ([@UrjuHub](https://github.com/UrjuHub)) · Mariami Tskhomelidze ([@ZONDROK](https://github.com/ZONDROK)) · Team rules: [docs/TEAM-REPO.md](docs/TEAM-REPO.md) · Spec: [docs/spec.md](docs/spec.md) · Delegation log: [docs/delegation-log.md](docs/delegation-log.md) · Journals: [docs/journal/](docs/journal/) · Team contract: [TEAM-CONTRACT.md](TEAM-CONTRACT.md) · Agent rules: [AGENTS.md](AGENTS.md)
