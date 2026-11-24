@@ -1,6 +1,12 @@
 # Runtime: OpenAI SDK talks to Gemini (Google AI Studio) and OpenRouter; both optional offline (mock mode).
 openai>=1.0.0
 python-dotenv>=1.0.0
+# Week 5 tools: contracts, HTTP endpoint (POST /act), MCP server
+pydantic>=2.12
+fastapi>=0.110
+uvicorn>=0.31
+httpx>=0.27
+mcp>=2.3
 # Golden-set runner (evals/run_golden.py)
 PyYAML>=6.0
 # Tests

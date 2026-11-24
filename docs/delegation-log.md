@@ -144,3 +144,31 @@ Everything below is AI-drafted and **not yet reviewed by a teammate**. It goes t
 - **Decision:** committed, pushed, PR #1 marked ready for review.
 - **AGENTS.md change:** none.
 - **Cost:** no API calls.
+
+### Entry 11 · Lab 5 tool contract and MCP
+- **Task:** the Lab 5 team slice on `feat/lab5-tools-mcp` (stacked on `chore/weeks1-4-catchup`):
+  - `docs/tool-contracts.md` with the HW2 owners table
+  - `src/contracts.py` (`LookupPolicy`), `src/tools.py` (`lookup_policy`, `ToolFailure`, `TOOLS`, `tools_for`, `verified_room`)
+  - `src/act.py` (`call_tool` with three gates, the `MAX_ROUNDS = 3` loop, `logs/tools.jsonl`), `complete_tools()` in `src/llm.py`
+  - `POST /act` in `src/app.py`, and `src/mcp_server.py`
+  - tests, `tests/test_tool_golden.py`, `evals/tools/`, decision 0005, and the two AGENTS.md "Never" lines
+
+  No HW2 tool was built.
+- **Delegated to:** Claude Code (Opus 5.5). The context was `Lab-5/` (README, HOMEWORK, templates, the `campuspulse-tools` example), the team `AGENTS.md`, and the existing `src/`.
+- **Plan check:** Luka gave the plan (tool, owners, identity mechanism, file list) in the prompt. There was no separate plan-approval step before files were written.
+- **Came back wrong / judgement calls to review:**
+  - **The `writes` flag became `needs_room`.** The example's `Tool.writes` flag is named `needs_room` here, because Urju's `my_open_tasks` is a private *read* that also needs the caller.
+  - **`act()` catches model errors.** It returns `status: "failed"` instead of raising. The example does not, but our confidence policy says never to show a stack trace. One model call per round and no retries keeps the AGENTS.md 3-call cap.
+  - **`extra_content` is echoed on tool calls, as well as `reasoning_details`.** Google's endpoint attaches thought signatures there. This is **not verified live** (provider outage, quota); a mocked SDK test pins the request shape.
+  - **`_create()` refactor in `src/llm.py`.** The SDK error mapping moved into a shared `_create()`. The JSON-mode request itself is unchanged, and the existing test that pins it still passes.
+  - **`src/pipeline.py` and `src/prefilter.py` are untouched**, so Luka's 2026-11-24 line-by-line sign-off still holds.
+  - **A team golden file was added** (`evals/tools/team.yaml`, 6 cases), so the CI frame runs real cases before any HW2 file exists. The template allows "any the team adds".
+- **Caught by:**
+  - offline smoke run: both doors' schemas equal; MCP drops an unknown `room` argument while function calling rejects it;
+  - 114 offline tests;
+  - not yet done: Lab 5 Checkpoint 1 (the real model calls the tool) and connecting an MCP host (`claude mcp add …`).
+- **Decision:** committed on the branch, not pushed, not tagged; waiting for Luka's review.
+- **AGENTS.md change:**
+  - "Never put a user, student or account id in a tool's arguments (for StumarOS: no room or guest field …)"
+  - "Never add a tool that deletes or sends without asking first"
+- **Cost:** no live API calls.

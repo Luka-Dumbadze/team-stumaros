@@ -1,4 +1,7 @@
-"""Prompt construction, model clients (live OpenRouter + offline mock) and the 3-call budget."""
+"""Prompt construction, model clients (live Gemini / OpenRouter + offline mock) and the 3-call budget.
+
+Week 5 adds complete_tools(): the same client asks the model which tool to call (function calling),
+and every such call writes one usage line to logs/usage.jsonl, like every triage call."""
 from __future__ import annotations
 
 import json
@@ -9,7 +12,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Callable, Mapping, Protocol
 
-from .prefilter import estimate_tokens
+from .prefilter import estimate_tokens, load_guide, select_sections
 from .schemas import ModelOutput, SchemaError, parse_model_output
 
 
@@ -100,6 +103,8 @@ class ModelClient(Protocol):
 
     def complete(self, messages: list[dict]) -> Completion: ...
 
+    def complete_tools(self, messages: list[dict], tools: list[dict]) -> tuple[dict, Completion]: ...
+
 
 class OpenAICompatibleClient:
     """Any OpenAI-compatible chat endpoint (Google AI Studio, OpenRouter): only base_url, key and model differ."""
@@ -119,25 +124,47 @@ class OpenAICompatibleClient:
         self.temperature = temperature
         self._extra = {"reasoning_effort": provider.reasoning_effort} if provider.reasoning_effort else {}
 
-    def complete(self, messages: list[dict]) -> Completion:
+    def _create(self, **kwargs):
+        """One request. Retryable failures become TransientError; anything else propagates."""
         o = self._openai
         try:
-            resp = self._client.chat.completions.create(
-                model=self.model, messages=messages, temperature=self.temperature,
-                max_tokens=MAX_OUTPUT_TOKENS, response_format={"type": "json_object"}, **self._extra,
-            )
+            return self._client.chat.completions.create(**kwargs)
         except (o.APITimeoutError, o.APIConnectionError, o.RateLimitError, o.InternalServerError) as exc:
             raise TransientError(type(exc).__name__) from exc
         except o.APIStatusError as exc:
             if exc.status_code >= 500:
                 raise TransientError(f"HTTP {exc.status_code}") from exc
             raise
+
+    def complete(self, messages: list[dict]) -> Completion:
+        resp = self._create(
+            model=self.model, messages=messages, temperature=self.temperature,
+            max_tokens=MAX_OUTPUT_TOKENS, response_format={"type": "json_object"}, **self._extra,
+        )
         usage = resp.usage
         choice = resp.choices[0]
         return Completion(choice.message.content or "", usage.prompt_tokens if usage else 0,
                           usage.completion_tokens if usage else 0, estimated=usage is None,
                           total_tokens=(usage.total_tokens or 0) if usage else 0,
                           finish_reason=choice.finish_reason)
+
+    def complete_tools(self, messages: list[dict], tools: list[dict]) -> tuple[dict, Completion]:
+        """Function calling: the model may answer, or ask for tools. No response_format here."""
+        resp = self._create(model=self.model, messages=messages, tools=tools, tool_choice="auto",
+                            temperature=self.temperature, max_tokens=MAX_OUTPUT_TOKENS, **self._extra)
+        m = resp.choices[0].message
+        calls = []
+        for c in m.tool_calls or []:
+            call = {"id": c.id, "name": c.function.name, "arguments": c.function.arguments or "{}"}
+            # Gemini's OpenAI-compatible endpoint may attach a thought signature here; echo it back unchanged.
+            if (extra := getattr(c, "model_extra", None) or {}).get("extra_content"):
+                call["extra_content"] = extra["extra_content"]
+            calls.append(call)
+        extra = getattr(m, "model_extra", None) or {}
+        usage = resp.usage
+        return ({"content": m.content, "tool_calls": calls, "reasoning_details": extra.get("reasoning_details")},
+                Completion("", usage.prompt_tokens if usage else 0, usage.completion_tokens if usage else 0,
+                           estimated=usage is None, total_tokens=(usage.total_tokens or 0) if usage else 0))
 
 
 class MockClient:
@@ -189,6 +216,30 @@ class MockClient:
         text = json.dumps(out, ensure_ascii=False)
         return Completion(text, estimate_prompt_tokens(messages), estimate_tokens(text), estimated=True)
 
+    def complete_tools(self, messages: list[dict], tools: list[dict]) -> tuple[dict, Completion]:
+        """Offline stand-in for function calling: picks lookup_policy by the guide's keywords and
+        reads tool results back. Like complete(), it only exercises our gates and loop, not a model."""
+        names = {t["function"]["name"] for t in tools}
+        last_user = max(i for i, m in enumerate(messages) if m["role"] == "user")
+        question = messages[last_user]["content"]
+        results = [json.loads(m["content"]) for m in messages[last_user + 1:] if m["role"] == "tool"]
+        calls = []
+        if results:
+            content = " ".join(r["text"] if "text" in r else f"Sorry, that did not work: {r.get('error')}"
+                               for r in results)
+        else:
+            sections = select_sections(question, load_guide())
+            if sections and "lookup_policy" in names:
+                content = None
+                calls = [{"id": f"call_{len(messages)}", "name": "lookup_policy",
+                          "arguments": json.dumps({"section": sections[0]["id"]})}]
+            else:
+                content = "I'm sorry, I don't have that information; I can ask the front desk to help you."
+        out = {"content": content, "tool_calls": calls, "reasoning_details": None}
+        text = content or json.dumps(calls)
+        prompt = json.dumps(messages, ensure_ascii=False) + json.dumps(tools)
+        return out, Completion(text, estimate_tokens(prompt), estimate_tokens(text), estimated=True)
+
 
 def make_client(model: str | None = None, env: Mapping[str, str] | None = None) -> ModelClient:
     """GEMINI_API_KEY first, then OPENROUTER_API_KEY, else the offline mock. Empty values count as unset."""
@@ -197,6 +248,30 @@ def make_client(model: str | None = None, env: Mapping[str, str] | None = None) 
         if key := (env.get(provider.key_env) or "").strip():
             return OpenAICompatibleClient(provider, key, model)
     return MockClient()
+
+
+def complete_tools(messages: list[dict], tools: list[dict], client: ModelClient, *, request_id: str,
+                   attempt: int, session_id: str = "act") -> dict:
+    """One function-calling turn through `client`, logged to logs/usage.jsonl whether it succeeds or not.
+    Returns {"content", "tool_calls", "reasoning_details"}. Errors are logged, then re-raised to the loop."""
+    from .pipeline import default_usage_log, write_usage  # lazy: pipeline imports this module
+
+    started = time.perf_counter()
+    record = {"timestamp": datetime.now(timezone.utc).isoformat(), "request_id": request_id, "attempt": attempt,
+              "status": "error", "prompt_tokens": 0, "completion_tokens": 0}
+    try:
+        msg, usage = client.complete_tools(messages, tools)
+        record.update(status="success", prompt_tokens=usage.prompt_tokens,
+                      completion_tokens=usage.completion_tokens, tokens_estimated=usage.estimated)
+        return msg
+    except Exception as exc:
+        status = getattr(exc, "status_code", None)  # never the message: it could echo request details
+        record["error"] = (f"transient: {exc}" if isinstance(exc, TransientError)
+                           else f"fatal: {type(exc).__name__}" + (f" (HTTP {status})" if status else ""))
+        raise
+    finally:
+        record["latency_ms"] = round((time.perf_counter() - started) * 1000)
+        write_usage(default_usage_log(), [record], session_id, client)
 
 
 def _parse_json(text: str) -> object:

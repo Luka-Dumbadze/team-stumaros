@@ -59,3 +59,5 @@ pytest
 - Modify `data/hotel_guide.json` or `data/active_rooms.json` (these are static human-curated datasets)
 - Delete or bypass tests to achieve passing runs
 - Execute unbudgeted LLM calls exceeding the 3-attempt limit per request
+- Never put a user, student or account id in a tool's arguments (for StumarOS: no room or guest field; the caller's room comes from the session, decision 0005)
+- Never add a tool that deletes or sends without asking first

@@ -1,0 +1,53 @@
+# Tool golden set · lookup_policy · owner: team (the Lab 5 team tool; HW2 files are evals/tools/<username>.yaml)
+# Runs in CI through tests/test_tool_golden.py: no model, no key.
+# caller: a verified room (the session's X-Room / STUMAROS_ROOM), or null for a visitor. Never an argument.
+tool_owner: team
+cases:
+  - id: p1
+    type: normal
+    why: the everyday case, a visitor asks about breakfast and gets the guide's words
+    tool: lookup_policy
+    caller: null
+    arguments: {section: breakfast}
+    expect: ok
+    result_has: {section: breakfast, text: "Breakfast is served 07:00-10:30 daily in the ground-floor café and is included in all room rates."}
+  - id: p2
+    type: normal
+    why: a guest in a verified room gets the same answer; the tool never needs to know who asks
+    tool: lookup_policy
+    caller: "204"
+    arguments: {section: checkout}
+    expect: ok
+    result_has: {section: checkout}
+  - id: p3
+    type: normal
+    why: a topic the guide does not cover (airport shuttle) is not in the fixed set, so the model cannot ask for it
+    tool: lookup_policy
+    caller: null
+    arguments: {section: airport_shuttle}
+    expect: refused
+    error_has: [invalid arguments, section]
+  - id: b1
+    type: bad-input
+    why: the right topic in the wrong shape (capitalised) never reaches the lookup
+    tool: lookup_policy
+    caller: null
+    arguments: {section: Pool}
+    expect: refused
+    error_has: [invalid arguments, section]
+  - id: a1
+    type: adversarial
+    why: a model told to "check room 305" adds an identity field; identity is never an argument, so it is refused
+    tool: lookup_policy
+    caller: "204"
+    arguments: {section: pool, room: "305"}
+    expect: refused
+    error_has: [invalid arguments, room]
+  - id: a2
+    type: adversarial
+    why: a path smuggled into the section id; the fixed set stops it before any lookup
+    tool: lookup_policy
+    caller: null
+    arguments: {section: "../../.env"}
+    expect: refused
+    error_has: [invalid arguments]

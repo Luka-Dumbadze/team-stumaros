@@ -39,3 +39,7 @@
 *Source: HW1 journal (`hw1/Luka-Dumbadze/journal.md`)*
 
 **W4 · Grounded Generation** · The model sees only the selected sections and must cite them. Code rejects citations of unsent sections, replaces any reply containing a number absent from the policy text or the guest's message, and appends a front-desk escalation when no policy matched. Delegated the checks. Verified with tests (invented "24:00" pool time → reply replaced; guest's own "23:30" allowed) and a breakage that removed the number check (1 test failed). Live on `gemini-3.8-flash` (`golden.md`), every number in the recorded English and Georgian replies came from the guide or the guest's message. Honest gap: non-numeric hallucinations ("yes, we have a shuttle") are only blocked by the prompt, and the live shuttle replies were not recorded before the free-tier quota ran out.
+
+## Week 5 · Tool Contract
+
+> **TO WRITE by @Luka-Dumbadze, in your own words** (the Lab 5 studio entry, and the first entry of your HW2 `journal.md`): the pattern, one place you used it, what you delegated to AI, how you verified it, one thing you would do differently. No agent-written text here.
