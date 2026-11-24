@@ -4,7 +4,9 @@
     python evals/run_golden.py --mode mock           # offline: exercises code gates only, NOT model quality
     python evals/run_golden.py --mode live --env-file hw1/Luka-Dumbadze/.env
 
-Exit code: 0 if pass_rate >= threshold, 1 if the gate fails, 2 on setup errors. Every model attempt is appended
+    python evals/run_golden.py --mode live --only G5 # partial run (no gate), e.g. to save free-tier quota
+
+Exit code: 0 if pass_rate >= threshold (or a partial run), 1 if the gate fails, 2 on setup errors. Every model attempt is appended
 to logs/usage.jsonl (git-ignored).
 """
 from __future__ import annotations
@@ -95,11 +97,16 @@ def _git_commit() -> str:
         return "unknown"
 
 
-def run(spec: dict, mode: str, gap: float = 0.0, log_file: Path | None = USAGE_LOG) -> dict:
+def run(spec: dict, mode: str, gap: float = 0.0, log_file: Path | None = USAGE_LOG,
+        only: list[str] | None = None) -> dict:
     today = date.fromisoformat(spec["today"])
+    commit = _git_commit()  # snapshot before the run: the tree may change while live cases are waiting
+    cases = [c for c in spec["cases"] if not only or c["id"] in only]
+    if only and len(cases) != len(set(only)):
+        raise ValueError(f"unknown case id in {only}")
     rows = []
     label = "mock"
-    for i, case in enumerate(spec["cases"]):
+    for i, case in enumerate(cases):
         started = time.monotonic()
         client = MockClient() if mode == "mock" else make_client()  # fresh client per case, like one CLI run
         label = getattr(client, "label", client.mode)
@@ -111,15 +118,19 @@ def run(spec: dict, mode: str, gap: float = 0.0, log_file: Path | None = USAGE_L
                      **{k: r[k] for k in ("reply", "tasks", "room", "room_status", "room_validated",
                                           "needs_clarification", "sections_sent", "guardrail_events",
                                           "usage", "request_id")}})
-        if gap and i < len(spec["cases"]) - 1 and (wait := gap - (time.monotonic() - started)) > 0:
+        if gap and i < len(cases) - 1 and (wait := gap - (time.monotonic() - started)) > 0:
             time.sleep(wait)
     passed = sum(r["passed"] for r in rows)
     pass_rate = round(passed / len(rows), 3) if rows else 0.0
-    return {"run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "commit": _git_commit(),
+    partial = len(rows) < len(spec["cases"])
+    note = OFFLINE_BANNER if mode == "mock" else "LIVE model run."
+    if partial:
+        note += f" PARTIAL run ({len(rows)} of {len(spec['cases'])} cases): not a gate result."
+    return {"run_at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "commit": commit,
             "mode": mode, "model": label, "today": spec["today"], "threshold": spec["threshold"],
             "passed": passed, "total": len(rows), "pass_rate": pass_rate,
-            "gate": "PASS" if pass_rate >= spec["threshold"] else "FAIL",
-            "note": OFFLINE_BANNER if mode == "mock" else "LIVE model run.", "cases": rows}
+            "gate": "N/A (partial)" if partial else "PASS" if pass_rate >= spec["threshold"] else "FAIL",
+            "note": note, "cases": rows}
 
 
 def to_markdown(report: dict) -> str:
@@ -163,6 +174,8 @@ def main(argv: list[str] | None = None) -> int:
                         help="seconds between case starts (default 12 live for free-tier limits, 0 mock)")
     parser.add_argument("--golden", type=Path, default=GOLDEN)
     parser.add_argument("--out", type=Path, default=RESULTS)
+    parser.add_argument("--only", nargs="+", metavar="ID",
+                        help="run only these case ids (e.g. --only G5); the report is marked partial, no gate")
     args = parser.parse_args(argv)
 
     try:
@@ -190,9 +203,9 @@ def main(argv: list[str] | None = None) -> int:
     print(f"[{mode}] running {args.golden.relative_to(ROOT) if args.golden.is_relative_to(ROOT) else args.golden}",
           file=sys.stderr)
 
-    report = run(load_golden(args.golden), mode, gap=gap)
+    report = run(load_golden(args.golden), mode, gap=gap, only=args.only)
     args.out.mkdir(parents=True, exist_ok=True)
-    stem = f"golden-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{mode}"
+    stem = f"golden-{datetime.now().strftime('%Y%m%d-%H%M%S')}-{mode}" + ("-partial" if args.only else "")
     (args.out / f"{stem}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     (args.out / f"{stem}.md").write_text(to_markdown(report), encoding="utf-8")
 
@@ -201,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"{report['passed']}/{report['total']} passed · pass rate {report['pass_rate']:.2f} · "
           f"threshold {report['threshold']:.2f} · gate {report['gate']} · mode {mode} ({report['model']})")
     print(f"report: {(args.out / stem).relative_to(ROOT) if args.out.is_relative_to(ROOT) else args.out / stem}.{{json,md}}")
-    return 0 if report["gate"] == "PASS" else 1
+    return 0 if report["gate"] != "FAIL" else 1
 
 
 if __name__ == "__main__":

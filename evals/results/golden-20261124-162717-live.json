@@ -1,0 +1,323 @@
+{
+  "run_at": "2026-11-24T12:27:17+00:00",
+  "commit": "1adffdc+dirty",
+  "mode": "live",
+  "model": "gemini:gemini-3.8-flash",
+  "today": "2026-10-15",
+  "threshold": 0.7,
+  "passed": 0,
+  "total": 5,
+  "pass_rate": 0.0,
+  "gate": "FAIL",
+  "note": "LIVE model run.",
+  "cases": [
+    {
+      "id": "G1",
+      "category": "factual",
+      "title": "Georgian composite: extra pillows + breakfast hours (room 204)",
+      "input": "გამარჯობა! ოთახი 204-ში 2 დამატებითი ბალიში გვჭირდება. როდემდეა საუზმე?",
+      "passed": false,
+      "checks": [
+        {
+          "check": "model_answered",
+          "ok": false,
+          "detail": "model_failed after 3 call(s): transient: InternalServerError"
+        },
+        {
+          "check": "must_mention /10:30/",
+          "ok": false,
+          "detail": ""
+        },
+        {
+          "check": "must_not_mention /22:00/",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "expected_tasks",
+          "ok": false,
+          "detail": "want [('204', 'housekeeping', 'normal')], got []"
+        },
+        {
+          "check": "room_validated == True",
+          "ok": true,
+          "detail": "got True"
+        }
+      ],
+      "reply": "Sorry, I couldn't process your message automatically. I've flagged it for the front desk, who will reply shortly.",
+      "tasks": [],
+      "room": "204",
+      "room_status": "valid",
+      "room_validated": true,
+      "needs_clarification": false,
+      "sections_sent": [
+        "breakfast",
+        "housekeeping"
+      ],
+      "guardrail_events": [
+        "attempt 1 failed: transient: InternalServerError",
+        "attempt 2 failed: transient: APITimeoutError",
+        "attempt 3 failed: transient: InternalServerError",
+        "model_failed after 3 call(s): transient: InternalServerError"
+      ],
+      "usage": {
+        "attempts": 3,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms": 15033,
+        "tokens_estimated": false
+      },
+      "request_id": "04049a662e37"
+    },
+    {
+      "id": "G2",
+      "category": "policy_refusal",
+      "title": "Pool at 23:30 + towels from checked-out room 305",
+      "input": "Room 305 here. Can we use the pool at 23:30 tonight? Also please send 2 towels.",
+      "passed": false,
+      "checks": [
+        {
+          "check": "model_answered",
+          "ok": false,
+          "detail": "model_failed after 3 call(s): transient: InternalServerError"
+        },
+        {
+          "check": "must_mention /22:00/",
+          "ok": false,
+          "detail": ""
+        },
+        {
+          "check": "must_mention /room number|ოთახის ნომ/",
+          "ok": false,
+          "detail": ""
+        },
+        {
+          "check": "must_not_mention /(pool|it) (is|will be) open (until|at|after) 23:30/",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "must_not_mention /towels (are|will be) (on (the|their) way|delivered|sent)/",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "must_block_task",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "room_validated == False",
+          "ok": true,
+          "detail": "got False"
+        }
+      ],
+      "reply": "Sorry, I couldn't process your message automatically. I've flagged it for the front desk, who will reply shortly.",
+      "tasks": [],
+      "room": "305",
+      "room_status": "not_checked_in",
+      "room_validated": false,
+      "needs_clarification": false,
+      "sections_sent": [
+        "pool",
+        "housekeeping"
+      ],
+      "guardrail_events": [
+        "attempt 1 failed: transient: InternalServerError",
+        "attempt 2 failed: transient: InternalServerError",
+        "attempt 3 failed: transient: InternalServerError",
+        "model_failed after 3 call(s): transient: InternalServerError"
+      ],
+      "usage": {
+        "attempts": 3,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms": 11650,
+        "tokens_estimated": false
+      },
+      "request_id": "40a8bfdbf6c8"
+    },
+    {
+      "id": "G3",
+      "category": "uncertainty",
+      "title": "Broken AC, no room number given",
+      "input": "The AC isn't working and it's really hot, please help!",
+      "passed": false,
+      "checks": [
+        {
+          "check": "model_answered",
+          "ok": false,
+          "detail": "model_failed after 3 call(s): transient: InternalServerError"
+        },
+        {
+          "check": "must_mention /room number|ოთახის ნომ/",
+          "ok": false,
+          "detail": ""
+        },
+        {
+          "check": "must_not_mention /(technician|maintenance|someone|engineer) (is|has been|will be) (on (the|their) way|sent|dispatched)/",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "must_block_task",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "room_validated == False",
+          "ok": true,
+          "detail": "got False"
+        },
+        {
+          "check": "needs_clarification == True",
+          "ok": false,
+          "detail": "got False"
+        }
+      ],
+      "reply": "Sorry, I couldn't process your message automatically. I've flagged it for the front desk, who will reply shortly.",
+      "tasks": [],
+      "room": null,
+      "room_status": "missing",
+      "room_validated": false,
+      "needs_clarification": false,
+      "sections_sent": [
+        "maintenance"
+      ],
+      "guardrail_events": [
+        "attempt 1 failed: transient: APITimeoutError",
+        "attempt 2 failed: transient: RateLimitError",
+        "attempt 3 failed: transient: InternalServerError",
+        "model_failed after 3 call(s): transient: InternalServerError"
+      ],
+      "usage": {
+        "attempts": 3,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms": 14268,
+        "tokens_estimated": false
+      },
+      "request_id": "c7a048a54d6a"
+    },
+    {
+      "id": "G4",
+      "category": "edge_typo",
+      "title": "Typo-heavy, Latin-script Georgian: check-out time",
+      "input": "gamarjoba! wat time is chek out tmrw?? can i stay abit l8r",
+      "passed": false,
+      "checks": [
+        {
+          "check": "model_answered",
+          "ok": false,
+          "detail": "model_failed after 3 call(s): transient: InternalServerError"
+        },
+        {
+          "check": "must_mention /11:00|11 ?a\\.?m\\.?/",
+          "ok": false,
+          "detail": ""
+        },
+        {
+          "check": "must_not_mention /12:00|noon/",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "must_block_task",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "reply": "Sorry, I couldn't process your message automatically. I've flagged it for the front desk, who will reply shortly.",
+      "tasks": [],
+      "room": null,
+      "room_status": "missing",
+      "room_validated": false,
+      "needs_clarification": false,
+      "sections_sent": [],
+      "guardrail_events": [
+        "attempt 1 failed: transient: RateLimitError",
+        "attempt 2 failed: transient: RateLimitError",
+        "attempt 3 failed: transient: InternalServerError",
+        "model_failed after 3 call(s): transient: InternalServerError"
+      ],
+      "usage": {
+        "attempts": 3,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms": 8987,
+        "tokens_estimated": false
+      },
+      "request_id": "a6a8d133e000"
+    },
+    {
+      "id": "G5",
+      "category": "hallucination_guard",
+      "title": "Free airport shuttle (not in hotel_guide.json)",
+      "input": "Do you provide a free airport shuttle?",
+      "passed": false,
+      "checks": [
+        {
+          "check": "model_answered",
+          "ok": false,
+          "detail": "model_failed after 3 call(s): transient: RateLimitError"
+        },
+        {
+          "check": "must_mention /not available|unavailable|don't have|do not have|no information|not able to confirm|can't confirm|cannot confirm/",
+          "ok": false,
+          "detail": ""
+        },
+        {
+          "check": "must_mention /front desk|reception/",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "must_not_mention /^\\s*yes\\b/",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "must_not_mention /\\b(we|hotel) (offer|offers|provide|provides|have|has|run|runs) (a |an )?(free |complimentary )?(airport )?(shuttle|transfer)/",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "must_not_mention /complimentary (airport )?(shuttle|transfer)/",
+          "ok": true,
+          "detail": ""
+        },
+        {
+          "check": "must_block_task",
+          "ok": true,
+          "detail": ""
+        }
+      ],
+      "reply": "Sorry, I couldn't process your message automatically. I've flagged it for the front desk, who will reply shortly.",
+      "tasks": [],
+      "room": null,
+      "room_status": "missing",
+      "room_validated": false,
+      "needs_clarification": false,
+      "sections_sent": [],
+      "guardrail_events": [
+        "attempt 1 failed: transient: RateLimitError",
+        "attempt 2 failed: transient: RateLimitError",
+        "attempt 3 failed: transient: RateLimitError",
+        "model_failed after 3 call(s): transient: RateLimitError"
+      ],
+      "usage": {
+        "attempts": 3,
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0,
+        "latency_ms": 2634,
+        "tokens_estimated": false
+      },
+      "request_id": "e4138deb98d0"
+    }
+  ]
+}

@@ -71,3 +71,11 @@ def test_mock_run_exercises_code_gates(tmp_path):
 def test_gate_compares_pass_rate_to_threshold(threshold, gate):
     report = run_golden.run({**SPEC, "threshold": threshold}, "mock", log_file=None)
     assert report["pass_rate"] == 0.8 and report["gate"] == gate  # mock: 4/5 (G4 fails, see above)
+
+
+def test_partial_run_has_no_gate():
+    report = run_golden.run(SPEC, "mock", log_file=None, only=["G5"])
+    assert [r["id"] for r in report["cases"]] == ["G5"] and report["gate"] == "N/A (partial)"
+    assert "PARTIAL" in report["note"]
+    with pytest.raises(ValueError):
+        run_golden.run(SPEC, "mock", log_file=None, only=["G9"])
