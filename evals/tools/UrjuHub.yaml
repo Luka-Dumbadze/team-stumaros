@@ -18,14 +18,14 @@ cases:
     arguments: {}
     expect: refused
     error_has: [no tool named]
-  - id: r3
+ - id: r3
     type: normal
-    why: inactive/checked-out room is treated as visitor and not offered the tool
+    why: unverified or checked-out room is rejected because no guest is checked in today
     tool: my_open_tasks
     caller: "305"
     arguments: {}
     expect: refused
-    error_has: [no tool named]
+    error_has: [checked in today]
   - id: b1
     type: bad-input
     why: unexpected unknown argument is rejected by extra="forbid"
