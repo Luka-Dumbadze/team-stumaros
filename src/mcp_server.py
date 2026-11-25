@@ -12,20 +12,25 @@ from __future__ import annotations
 
 import os
 import sys
+from typing import Annotated
 
 from mcp.server import MCPServer
+from mcp.server.mcpserver import Resolve
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from . import tools
-from .contracts import LookupPolicy, SectionId
+from .contracts import CreateServiceTask, Department, LookupPolicy, SectionId, TaskText
 
-mcp = MCPServer("stumaros", instructions="Boutique hotel guide: policy sections, read word for word.")
+mcp = MCPServer("stumaros", instructions="Boutique hotel guest assistant: the hotel guide, read word for word, "
+                                       "and service requests for the guest's own room.")
 READS = ToolAnnotations(read_only_hint=True, open_world_hint=False)
+# Adds a task, never removes or overwrites one; the same request twice is one task (see tools.create_service_task).
+ADDS = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=True, open_world_hint=False)
 
 
 def verified_caller_room() -> str:
-    """Who is calling, for tools that need a room (HW2): `Annotated[str, Resolve(verified_caller_room)]`.
+    """Who is calling, for tools that need a room: `Annotated[str, Resolve(verified_caller_room)]`.
     Set by whoever launches the server (STUMAROS_ROOM), verified against active stays; never by the model."""
     room = tools.verified_room(os.environ.get("STUMAROS_ROOM"))
     if room is None:
@@ -43,6 +48,12 @@ def _run(fn, *args, **kwargs):
 @mcp.tool(annotations=READS, description=LookupPolicy.__doc__)
 def lookup_policy(section: SectionId) -> tools.PolicySection:
     return _run(tools.lookup_policy, LookupPolicy(section=section))
+
+
+@mcp.tool(annotations=ADDS, description=CreateServiceTask.__doc__)
+def create_service_task(department: Department, task: TaskText,
+                        room: Annotated[str, Resolve(verified_caller_room)]) -> tools.ServiceTask:
+    return _run(tools.create_service_task, CreateServiceTask(department=department, task=task), room=room)
 
 
 if __name__ == "__main__":

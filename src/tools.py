@@ -1,8 +1,9 @@
 """StumarOS's tools: the code that acts, behind the contracts in src/contracts.py (Lab 5 pattern).
 
-Lab 5 ships one tool, lookup_policy, which reads. Nothing here deletes, edits a booking, or reveals
-who is staying in which room: that is the least-privilege decision, made by what we chose NOT to
-build (no occupancy lookup). The HW2 tools (owners table in docs/tool-contracts.md) join TOOLS below.
+Lab 5 ships lookup_policy, which reads. HW2 adds create_service_task (Luka-Dumbadze), which adds a task
+for the caller's own room. Nothing here deletes, edits a booking, or reveals who is staying in which room:
+that is the least-privilege decision, made by what we chose NOT to build (no occupancy lookup, no cancel).
+The other HW2 tools (owners table in docs/tool-contracts.md) join TOOLS below.
 
 Every tool takes a validated contract object (never raw model output) and returns a pydantic
 result. A failure we expected raises ToolFailure with a message written for the model to read and
@@ -17,13 +18,14 @@ import hashlib
 import os
 from dataclasses import dataclass
 from datetime import date, datetime
-from typing import Callable
+from typing import Callable, Literal
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel
 
 from . import prefilter
-from .contracts import Contract, LookupPolicy
+from .contracts import Contract, CreateServiceTask, LookupPolicy
+from .pipeline import is_urgent
 
 TBILISI = ZoneInfo("Asia/Tbilisi")
 
@@ -70,6 +72,48 @@ def lookup_policy(args: LookupPolicy) -> PolicySection:
     return PolicySection(section=section["id"], text=section["text"])
 
 
+# ---------------------------------------------------------------- create_service_task (HW2 · Luka-Dumbadze)
+
+MAX_OPEN_TASKS = 5   # per room: a looping or injected model cannot flood staff with tickets
+
+
+class ServiceTask(BaseModel):
+    room: str                              # the caller's verified room, never an argument
+    department: str
+    priority: Literal["normal", "urgent"]  # set by is_urgent() (decision 0001), never by the model
+    task: str
+    status: Literal["created", "already open"]
+
+
+# Open tasks, in process memory (AGENTS.md: no storage files). my_open_tasks (HW2, @UrjuHub) will read it.
+SERVICE_TASKS: list[ServiceTask] = []
+
+
+def _same(a: str, b: str) -> bool:
+    return " ".join(a.split()).casefold() == " ".join(b.split()).casefold()
+
+
+def create_service_task(args: CreateServiceTask, room: str) -> ServiceTask:
+    """`room` comes from the verified session (X-Room header or STUMAROS_ROOM). The contract has no such field."""
+    if verified_room(room) != room:  # defence in depth: tools_for() already hides the tool from visitors
+        raise ToolFailure("Nothing was filed: this needs a guest who is checked in today. Ask the guest to "
+                          "confirm their room number and the name on the booking with the front desk.")
+    if others := [r for r in prefilter.extract_rooms(args.task) if r != room]:
+        raise ToolFailure(f"Nothing was filed: the text mentions room {others[0]}, and this tool only files "
+                          "tasks for your own room. Remove the other room number, or offer to ask the front desk.")
+    mine = [t for t in SERVICE_TASKS if t.room == room]
+    for t in mine:  # idempotent: the same request twice is one task
+        if t.department == args.department and _same(t.task, args.task):
+            return t.model_copy(update={"status": "already open"})
+    if len(mine) >= MAX_OPEN_TASKS:
+        raise ToolFailure(f"Nothing was filed: this room already has {MAX_OPEN_TASKS} open requests. Do not try "
+                          "again; tell the guest staff are on their way and offer to ask the front desk.")
+    task = ServiceTask(room=room, department=args.department, task=args.task, status="created",
+                       priority="urgent" if is_urgent(args.task) else "normal")
+    SERVICE_TASKS.append(task)
+    return task.model_copy()
+
+
 # ---------------------------------------------------------------- the registry
 
 @dataclass(frozen=True)
@@ -91,6 +135,7 @@ class Tool:
 
 TOOLS = {t.name: t for t in [
     Tool("lookup_policy", LookupPolicy, lookup_policy),
+    Tool("create_service_task", CreateServiceTask, create_service_task, needs_room=True),
 ]}
 
 

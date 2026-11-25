@@ -2,6 +2,8 @@
 Today is pinned to 2026-10-15, the day the mock stays in data/active_rooms.json are valid."""
 import pytest
 
+from src import tools
+
 
 @pytest.fixture(autouse=True)
 def _usage_log_in_tmp(tmp_path, monkeypatch):
@@ -12,6 +14,8 @@ def _usage_log_in_tmp(tmp_path, monkeypatch):
     monkeypatch.setenv("STUMAROS_TODAY", "2026-10-15")
     for var in ("GEMINI_API_KEY", "OPENROUTER_API_KEY", "STUMAROS_ROOM"):
         monkeypatch.delenv(var, raising=False)
+    # Service tasks live in process memory (AGENTS.md: no storage files); every test starts with none.
+    monkeypatch.setattr(tools, "SERVICE_TASKS", [], raising=False)
     return log
 
 

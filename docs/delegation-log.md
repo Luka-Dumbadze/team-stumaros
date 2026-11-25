@@ -190,3 +190,29 @@ Everything below is AI-drafted and **not yet reviewed by a teammate**. It goes t
 - **Not done (needs Luka):** connecting an MCP host (`claude mcp add …`, then `/mcp`) and pasting one host question and answer into the PR description (Lab 5 Part 3 step 4).
 - **Results:** `pytest -q tests` 115 passed. Offline golden 4/5 (gate PASS; g4 is the known misspelled-checkout case). Remote CI: see draft PR #2.
 - **Cost:** 1 live model call (failed, $0).
+
+### Entry 13 · HW2 `create_service_task` (Luka-Dumbadze, issue #3)
+- **Task:** HW2 product slice on `slice-3-service-task`, draft PR #4.
+  - Tests first: `evals/tools/Luka-Dumbadze.yaml` (5 cases) and `tests/test_create_service_task.py` were committed with no implementation. Red CI run: https://github.com/Luka-Dumbadze/team-stumaros/actions/runs/45423920704 (54 failed, 117 passed).
+  - Then the implementation: `is_urgent()` in `src/pipeline.py`, `CreateServiceTask`/`Department`/`TaskText` in `src/contracts.py`, `create_service_task`/`ServiceTask`/`SERVICE_TASKS`/`MAX_OPEN_TASKS` in `src/tools.py`, the `@mcp.tool` with `Resolve(verified_caller_room)` and `ADDS` in `src/mcp_server.py`.
+  - Docs: the `docs/tool-contracts.md` section and owners wording, and the "fixed" note in decision 0001.
+- **Delegated to:** Claude Code (Opus 5.5), rung 3. Luka approved the design before implementation:
+  - departments `housekeeping` and `maintenance` only; text 3–120 characters, one line;
+  - priority set in code (`urgent` or `normal`);
+  - refuse text that names another room;
+  - re-check the stay; idempotent; `MAX_OPEN_TASKS = 5`;
+  - in-memory storage.
+- **Came back wrong / judgement calls to review:**
+  - **`src/pipeline.py` changed.** `URGENT_KEYWORDS` became `is_urgent()`, with always-urgent words, plus fault-prone nouns that count only with a fault word. **This invalidates part of Luka's 2026-11-24 sign-off on `pipeline.py`: the priority override lines need a re-read.** The room gate and grounding are unchanged.
+  - **"don't" and "do not" are not fault words,** so "please don't knock on the door" stays `normal`. "Won't", "isn't" and "not" are fault words.
+  - **Known misses:** "the tap is dripping" (no water/door/lock/AC noun) stays `normal`. "Set the AC to 20" stays `normal` (correct). "Doorbell broken" becomes `urgent` (debatable).
+  - **The another-room check uses `prefilter.extract_rooms`,** so it needs a room word ("room 410", "#410", "ოთახი 410"). A bare "410" is not caught. Checking bare numbers against `active_rooms.json` would reveal which rooms exist. Documented in the contract.
+  - **One existing test changed:** `tests/test_mcp.py::test_the_server_starts_as_a_real_stdio_subprocess` now expects every tool in `TOOLS`, not just `['lookup_policy']`. This is stricter, not weaker.
+  - **`tests/conftest.py`** resets `tools.SERVICE_TASKS` before each test, so open tasks never leak between tests (the cap of 5 would otherwise depend on test order).
+- **Caught by:**
+  - `pytest -q tests`: 172 passed, including golden `Luka-Dumbadze:s1–a1` and `test_both_doors_describe_the_arguments_identically[create_service_task]`;
+  - offline triage golden 4/5, gate PASS (unchanged);
+  - extra hand checks of `is_urgent` on 9 phrases outside the tests.
+- **Decision:** committed to the PR branch for Luka's line-by-line review. Not merged.
+- **Not done yet:** the brief's red run (a throwaway branch that weakens the contract), the `hw2/Luka-Dumbadze/` write-up, and a live model or MCP host calling the tool. Branch protection is unavailable on a private free-plan repo (HTTP 403), so no run can block a merge yet.
+- **Cost:** no live API calls.
