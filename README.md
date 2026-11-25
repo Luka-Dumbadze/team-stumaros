@@ -19,10 +19,13 @@ cp .env.example .env        # then set GEMINI_API_KEY (or OPENROUTER_API_KEY); w
 .venv/bin/python -m pytest -q tests                  # unit tests, offline, no key (what CI runs)
 .venv/bin/python evals/run_golden.py                 # golden set: live if a key is set, else offline (mock)
 .venv/bin/python evals/usage_summary.py              # medians from logs/usage.jsonl
+.venv/bin/uvicorn src.app:app --reload               # POST /act: the model may call lookup_policy (Week 5)
+STUMAROS_ROOM=204 STUMAROS_TODAY=2026-10-15 .venv/bin/python -m src.mcp_server   # MCP server over stdio
 ```
 - **Stay dates:** the mock stays in `data/active_rooms.json` are valid on 2026-10-15, so pin `--today`.
 - **Mock vs live:** `--mock` forces the offline client. `evals/run_golden.py --mode live --only g5` runs one question live.
-- **Usage log:** every model attempt is appended to `logs/usage.jsonl` (git-ignored).
+- **Usage log:** every model attempt is appended to `logs/usage.jsonl`, and every tool call to `logs/tools.jsonl` (both git-ignored).
+- **Caller identity:** `POST /act` reads the guest's room from the `X-Room` header and uses it only if it is an active stay today. The model never chooses it. Tool contracts: [`docs/tool-contracts.md`](docs/tool-contracts.md).
 - **HW1 suite:** the HW1 snapshot keeps its own tests: `pytest hw1/Luka-Dumbadze/src`.
 
 ## How it works
@@ -31,7 +34,7 @@ cp .env.example .env        # then set GEMINI_API_KEY (or OPENROUTER_API_KEY); w
 - **Architecture and budget:** [`docs/DESIGN-REVIEW.md`](docs/DESIGN-REVIEW.md) · **Key decisions:** [`docs/decisions/`](docs/decisions/)
 
 ```
-src/      triage pipeline          tests/    pytest suite (CI)         evals/   golden.yaml, runner, results/
+src/      triage pipeline + tools  tests/    pytest suite (CI)         evals/   golden.yaml, tools/, results/
 data/     mock guide + stays       docs/     spec, review, decisions   hw1/     individual HW1 (historical)
 ```
 

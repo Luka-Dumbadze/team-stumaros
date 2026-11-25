@@ -144,3 +144,49 @@ Everything below is AI-drafted and **not yet reviewed by a teammate**. It goes t
 - **Decision:** committed, pushed, PR #1 marked ready for review.
 - **AGENTS.md change:** none.
 - **Cost:** no API calls.
+
+### Entry 11 · Lab 5 tool contract and MCP
+- **Task:** the Lab 5 team slice on `feat/lab5-tools-mcp` (stacked on `chore/weeks1-4-catchup`):
+  - `docs/tool-contracts.md` with the HW2 owners table
+  - `src/contracts.py` (`LookupPolicy`), `src/tools.py` (`lookup_policy`, `ToolFailure`, `TOOLS`, `tools_for`, `verified_room`)
+  - `src/act.py` (`call_tool` with three gates, the `MAX_ROUNDS = 3` loop, `logs/tools.jsonl`), `complete_tools()` in `src/llm.py`
+  - `POST /act` in `src/app.py`, and `src/mcp_server.py`
+  - tests, `tests/test_tool_golden.py`, `evals/tools/`, decision 0005, and the two AGENTS.md "Never" lines
+
+  No HW2 tool was built.
+- **Delegated to:** Claude Code (Opus 5.5). The context was `Lab-5/` (README, HOMEWORK, templates, the `campuspulse-tools` example), the team `AGENTS.md`, and the existing `src/`.
+- **Plan check:** Luka gave the plan (tool, owners, identity mechanism, file list) in the prompt. There was no separate plan-approval step before files were written.
+- **Came back wrong / judgement calls to review:**
+  - **The `writes` flag became `needs_room`.** The example's `Tool.writes` flag is named `needs_room` here, because Urju's `my_open_tasks` is a private *read* that also needs the caller.
+  - **`act()` catches model errors.** It returns `status: "failed"` instead of raising. The example does not, but our confidence policy says never to show a stack trace. One model call per round and no retries keeps the AGENTS.md 3-call cap.
+  - **`extra_content` is echoed on tool calls, as well as `reasoning_details`.** Google's endpoint attaches thought signatures there. This is **not verified live** (provider outage, quota); a mocked SDK test pins the request shape.
+  - **`_create()` refactor in `src/llm.py`.** The SDK error mapping moved into a shared `_create()`. The JSON-mode request itself is unchanged, and the existing test that pins it still passes.
+  - **`src/pipeline.py` and `src/prefilter.py` are untouched**, so Luka's 2026-11-24 line-by-line sign-off still holds.
+  - **A team golden file was added** (`evals/tools/team.yaml`, 6 cases), so the CI frame runs real cases before any HW2 file exists. The template allows "any the team adds".
+- **Caught by:**
+  - offline smoke run: both doors' schemas equal; MCP drops an unknown `room` argument while function calling rejects it;
+  - 114 offline tests;
+  - not yet done: Lab 5 Checkpoint 1 (the real model calls the tool) and connecting an MCP host (`claude mcp add …`).
+- **Decision:** committed on the branch, not pushed, not tagged; waiting for Luka's review.
+- **AGENTS.md change:**
+  - "Never put a user, student or account id in a tool's arguments (for StumarOS: no room or guest field …)"
+  - "Never add a tool that deletes or sends without asking first"
+- **Cost:** no live API calls.
+
+### Entry 12 · Lab 5 verification pass
+- **Task:** audit `feat/lab5-tools-mcp` against `Lab-5/README.md` and `examples/campuspulse-tools/`, check the MCP server as a real subprocess, try Lab 5 Checkpoint 1 live (at most 2 questions), then push and open a draft PR.
+- **Delegated to:** Claude Code (Opus 5.5). Rung 3: Luka reviews the diff.
+- **Found and fixed:**
+  - `AGENTS.md` "How to run" pointed at `uvicorn app.main:app` and "You may" at `app/`, which do not exist. Changed to `src.app:app`, `python -m src.mcp_server`, `pytest -q tests` and `src/`.
+  - The MCP door was tested only in memory. Added `tests/test_mcp.py::test_the_server_starts_as_a_real_stdio_subprocess`: it launches `python -m src.mcp_server` over stdio (`STUMAROS_ROOM=204`), lists tools (`['lookup_policy']`), makes one valid call (`pool`, text returned) and one invalid call (`airport_shuttle`, error result with the SDK's validation message). No startup or import errors.
+  - The Week 5 journal placeholder now follows the course shape (Where I used it / What I noticed / Do differently), with empty brackets. No reflection text was written.
+- **Checked, no change needed:** CI installs `requirements.txt` on Python 3.11, and every new dependency supports it (FastAPI 0.165 needs ≥3.11). `.gitignore` has `logs/`, so `logs/tools.jsonl` and `logs/usage.jsonl` stay out of `git status`. `tests/test_tool_golden.py` is still byte-identical to the template. `evals/tools/.gitkeep` is present. `call_tool()` returns `ok`, `error` and `result`, the keys the HW2 runner reads.
+- **Checkpoint 1, offline (mock model, temp log):** "What are the pool hours?" as room 204 gave `answered` with the pool text. A bad call (`{"section": "Pool", "room": "305"}`, visitor) was refused before the tool ran. Both lines were written:
+  ```
+  {"tool": "lookup_policy", "arguments": "{\"section\": \"pool\"}", "ok": true, "error": null, "room": "fc56dbc6d465", ...}
+  {"tool": "lookup_policy", "arguments": "{\"section\": \"Pool\", \"room\": \"305\"}", "ok": false, "error": "invalid arguments: room: Extra inputs are not permitted; section: Input should be 'breakfast', 'pool', …", "room": null, ...}
+  ```
+- **Checkpoint 1, live:** **not passed: provider error.** Question 1 ("What are the pool hours?", room 204, Google AI Studio `gemini-3.8-flash`) failed on its first model call with `transient: InternalServerError` (HTTP 5xx) after 791 ms, logged in `logs/usage.jsonl` (request `805d349a3897`, `status: error`). `act()` returned `failed` with the front-desk message. As agreed, the pass stopped there: question 2 was not sent. The real model calling `lookup_policy` is still unverified, as is the `extra_content` echo.
+- **Not done (needs Luka):** connecting an MCP host (`claude mcp add …`, then `/mcp`) and pasting one host question and answer into the PR description (Lab 5 Part 3 step 4).
+- **Results:** `pytest -q tests` 115 passed. Offline golden 4/5 (gate PASS; g4 is the known misspelled-checkout case). Remote CI: see draft PR #2.
+- **Cost:** 1 live model call (failed, $0).

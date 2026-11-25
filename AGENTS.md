@@ -14,8 +14,9 @@ An AI guest operations assistant for boutique hotels that handles incoming guest
 ## How to run
 ```bash
 pip install -r requirements.txt
-uvicorn app.main:app --reload
-pytest
+uvicorn src.app:app --reload     # POST /act (Week 5); POST /chat joins src/app.py later
+python -m src.mcp_server         # MCP server over stdio (STUMAROS_ROOM = the caller's room)
+pytest -q tests                  # offline, no key (what CI runs)
 ```
 
 ## API Contract & State
@@ -23,7 +24,7 @@ pytest
   - **Request Body:** `{ "session_id": str, "message": str, "room": Optional[str] }`
   - **Response Body:** `{ "session_id": str, "reply": str, "tasks": list[Task], "room_validated": bool }`
   - **Task Schema:** `{ "room": str, "department": "housekeeping" | "maintenance" | "front_desk", "priority": "low" | "normal" | "urgent", "task": str }`
-- **Session State:** Keep session history in-memory in `app/` (simple dictionary by `session_id`; no external DB files).
+- **Session State:** Keep session history in-memory in `src/` (simple dictionary by `session_id`; no external DB files).
 - **Turn Definition:** 1 turn = 1 exchange (1 user message + 1 assistant reply).
 - **Context Budget:** Strict maximum of the last 4 turns (up to 8 messages total) passed to the model prompt.
 
@@ -50,7 +51,7 @@ pytest
 - **Secrets:** Environment variables only (`GEMINI_API_KEY` or `OPENROUTER_API_KEY`, or a git-ignored `.env`). Never hardcode or log API keys.
 
 ## You may
-- Create and edit code in `app/`, `tests/`, `docs/`, `evals/`
+- Create and edit code in `src/`, `tests/`, `docs/`, `evals/`
 - Propose dependency additions in `requirements.txt`
 - Add golden scenario fixtures under `evals/`
 
@@ -59,3 +60,5 @@ pytest
 - Modify `data/hotel_guide.json` or `data/active_rooms.json` (these are static human-curated datasets)
 - Delete or bypass tests to achieve passing runs
 - Execute unbudgeted LLM calls exceeding the 3-attempt limit per request
+- Never put a user, student or account id in a tool's arguments (for StumarOS: no room or guest field; the caller's room comes from the session, decision 0005)
+- Never add a tool that deletes or sends without asking first

@@ -39,3 +39,9 @@
 *Source: HW1 journal (`hw1/Luka-Dumbadze/journal.md`)*
 
 **W4 · Grounded Generation** · The model sees only the selected sections and must cite them. Code rejects citations of unsent sections, replaces any reply containing a number absent from the policy text or the guest's message, and appends a front-desk escalation when no policy matched. Delegated the checks. Verified with tests (invented "24:00" pool time → reply replaced; guest's own "23:30" allowed) and a breakage that removed the number check (1 test failed). Live on `gemini-3.8-flash` (`golden.md`), every number in the recorded English and Georgian replies came from the guide or the guest's message. Honest gap: non-numeric hallucinations ("yes, we have a shuttle") are only blocked by the prompt, and the live shuttle replies were not recorded before the free-tier quota ran out.
+
+## Week 5 · Tool Contract
+
+> **TO WRITE by @Luka-Dumbadze, in your own words: 2 to 3 sentences, no agent-written text** (Turnitin applies). This is the Lab 5 studio entry and the first entry of your HW2 `hw2/Luka-Dumbadze/journal.md`. Shape from `Lab-5/examples/hw2-example/journal.md`. Facts you can point to (not reflections): [delegation-log entries 11 and 12](../delegation-log.md), [`docs/tool-contracts.md`](../tool-contracts.md), [decision 0005](../decisions/0005-caller-room-from-the-session.md).
+
+**Where I used it:** [one concrete place you applied the Tool Contract pattern in StumarOS this week]. **What I noticed:** [one thing the contract, the gates or a test caught or made you rethink]. **Do differently:** [one thing you would change next time, e.g. in how you delegated or verified].

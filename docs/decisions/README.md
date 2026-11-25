@@ -8,3 +8,4 @@ One file per decision a newcomer would question, from `Lab-2/templates/capstone-
 | [0002](0002-georgian-word-start-matching.md) | Georgian keywords match at word start only | Luka Dumbadze |
 | [0003](0003-openai-endpoint-portability.md) | One OpenAI-SDK client for Gemini and OpenRouter, thinking off | Luka Dumbadze |
 | [0004](0004-text-only-v1.md) | v1 is text-only (no multimodal input) | **Proposed**: team decides in PR review |
+| [0005](0005-caller-room-from-the-session.md) | The caller's room is never a tool argument | Luka Dumbadze (Lab 5) |
