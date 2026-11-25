@@ -54,3 +54,7 @@ class CreateServiceTask(Contract):
     urgent), so do not ask the guest for one."""
     department: Department
     task: TaskText
+
+class MyOpenTasks(Contract):
+    """List open service tasks for the caller's own verified room. Reads only; never changes or
+    cancels tasks and never shows another room's tasks."""
