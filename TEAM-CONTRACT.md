@@ -39,5 +39,5 @@ Step 1: name it inside the team within 48 hours. Step 2: if unresolved in one we
 Signed (a commit from each member on this file counts as a signature). Each member ticks their own line and fills in the date, in their own commit:
 
 - [x] Luka Dumbadze (@Luka-Dumbadze): date 2026-11-24 (entered by Claude Code on Luka's instruction, in a commit from Luka's account)
-- [ ] Urju (@UrjuHub): date ______
+- [x] Urju (@UrjuHub): date 2026-11-24
 - [ ] Mariami Tskhomelidze (@ZONDROK): date ______
