@@ -4,9 +4,11 @@
 
 ## Week 5 · Tool Contract
 
-**Where I used it:** [Fill in your own words: one concrete place you applied the Tool Contract pattern, e.g. in Lab 5's `lookup_policy` or HW2's `create_service_task`]. **What I noticed:** [Fill in your own words: one thing the contract, the gates, a golden case or the red run caught or made you rethink]. **Do differently:** [Fill in your own words: one thing you would change next time].
+- **Where I used it:** On `lookup_policy` (Lab 5) and `create_service_task` (HW2), keeping `room` out of the Pydantic contract (`extra="forbid"`) and injecting the verified room from the `X-Room` header or `Resolve(verified_caller_room)`.
 
-*Facts you can point to, not reflections: [`evidence.md`](evidence.md) (the red run and the green run), [`docs/delegation-log.md`](../../docs/delegation-log.md) entries 11–13, and the Week 5 entry in [`docs/journal/Luka-Dumbadze.md`](../../docs/journal/Luka-Dumbadze.md).*
+-  **What I noticed:** When I deliberately added `room` back to CreateServiceTask on the throwaway PR, 5 CI checks failed and blocked the merge, while our internal room-number check inside `create_service_task` still blocked the adversarial prompt `"room 410"`.
+
+- **Do differently:** Next time I would test the weakened contract before adding the extra regex guard inside the tool function, so I can verify each defense layer separately.
 
 ## Week 6 · Session State
 

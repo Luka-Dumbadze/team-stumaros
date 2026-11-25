@@ -37,7 +37,7 @@
   - `tests/test_mcp.py::test_both_doors_describe_the_arguments_identically[create_service_task]`
   - `tests/test_tool_golden.py::test_tool_golden_case[Luka-Dumbadze:a1]`
 
-**What it showed.** *(A factual draft of what the run showed; Luka to check and rewrite in his own words.)*
+**What it showed.** Adding an optional `room` argument to `CreateServiceTask` on the throwaway branch broke 5 tests and GitHub blocked the merge (BLOCKED state). CI caught the extra field in the contract tests, the MCP both-doors parity check, and golden case `a1`. Interestingly, `a1` was still refused at runtime because `create_service_task` scans the task description for other room numbers, so nothing was filed for room 410 anyway. Even so, Gate 2 (`extra="forbid"`) is the right place to stop it, because invalid arguments should fail in the schema before any tool code runs.
 - **Golden case a1 still refused the injected call,** but for the wrong reason. The weakened contract accepted `room: "410"`. The tool then refused because its second check found "room 410" in the text, so nothing was filed.
 - **The case failed only because of `error_has`.** It requires `invalid arguments` and `room` in the error. A case that checked just `expect: refused` would have passed, hiding the fact that the contract had stopped guarding identity.
 - **The added field did nothing at runtime yet,** because the tool still takes the room from the session. But the schema now told the model it could choose a room, and one later edit that read `args.room` would send staff to any room.
