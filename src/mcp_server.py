@@ -20,7 +20,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from . import tools
-from .contracts import CreateServiceTask, Department, LookupPolicy, SectionId, TaskText
+from .contracts import CreateServiceTask, Department, LookupPolicy, MyOpenTasks, SectionId, TaskText
 
 mcp = MCPServer("stumaros", instructions="Boutique hotel guest assistant: the hotel guide, read word for word, "
                                        "and service requests for the guest's own room.")
@@ -55,6 +55,9 @@ def create_service_task(department: Department, task: TaskText,
                         room: Annotated[str, Resolve(verified_caller_room)]) -> tools.ServiceTask:
     return _run(tools.create_service_task, CreateServiceTask(department=department, task=task), room=room)
 
+@mcp.tool(annotations=READS, description=MyOpenTasks.__doc__)
+def my_open_tasks(room: Annotated[str, Resolve(verified_caller_room)]) -> tools.OpenTasksResult:
+    return _run(tools.my_open_tasks, MyOpenTasks(), room=room)
 
 if __name__ == "__main__":
     if "--http" in sys.argv:
