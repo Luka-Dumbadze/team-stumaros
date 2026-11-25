@@ -48,3 +48,5 @@
 ## The green run
 
 Product pull request #4 (implementation commit `519c752`): https://github.com/Luka-Dumbadze/team-stumaros/actions/runs/45425562294. It ran 172 tests and all passed, including the 5 cases above and the both-doors test. The merge state was `CLEAN`. *After #4 merges to `main`, add the green run on `main` here as well.*
+
+https://github.com/Luka-Dumbadze/team-stumaros/actions/runs/45677955347/job/139430464319
