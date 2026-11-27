@@ -24,7 +24,7 @@ from zoneinfo import ZoneInfo
 from pydantic import BaseModel
 
 from . import prefilter
-from .contracts import Contract, CreateServiceTask, LookupPolicy
+from .contracts import CreateServiceTask, LookupPolicy, MyOpenTasks
 from .pipeline import is_urgent
 
 TBILISI = ZoneInfo("Asia/Tbilisi")
@@ -113,6 +113,21 @@ def create_service_task(args: CreateServiceTask, room: str) -> ServiceTask:
     SERVICE_TASKS.append(task)
     return task.model_copy()
 
+# ---------------------------------------------------------------- my_open_tasks (HW2 · @UrjuHub)
+
+class OpenTasksResult(BaseModel):
+    room: str
+    tasks: list[ServiceTask]
+
+
+def my_open_tasks(args: MyOpenTasks, room: str) -> OpenTasksResult:
+    """`room` comes from the verified session (X-Room header or STUMAROS_ROOM). The contract has no such field."""
+    if verified_room(room) != room:
+        raise ToolFailure("Nothing was returned: this needs a guest who is checked in today. Ask the guest to "
+                          "confirm their room number and the name on the booking with the front desk.")
+    mine = [t.model_copy() for t in SERVICE_TASKS if t.room == room]
+    return OpenTasksResult(room=room, tasks=mine)
+
 
 # ---------------------------------------------------------------- the registry
 
@@ -136,6 +151,7 @@ class Tool:
 TOOLS = {t.name: t for t in [
     Tool("lookup_policy", LookupPolicy, lookup_policy),
     Tool("create_service_task", CreateServiceTask, create_service_task, needs_room=True),
+    Tool("my_open_tasks", MyOpenTasks, my_open_tasks, needs_room=True),
 ]}
 
 
