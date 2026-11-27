@@ -12,7 +12,7 @@
 
 - **In the repo:** `src/contracts.py` (`CreateServiceTask`, line 51), `src/tools.py` (`create_service_task`, line 96), product PR #4 (merged as `a471bf3`), red-run PR #5.
 
-## Week 6 · Session State · [LUKA: date, e.g. 2026-11-27]
+## Week 6 · Session State · 2026-11-27
 
 - **Where I used it:** StumarOS does not have `docs/state-contract.md` or `DELETE /me/memory` yet. Right now, `src/tools.py` checks `verified_room()` on each request, hashes it with `room_key()` for `logs/tools.jsonl`, and stores tasks in memory in `SERVICE_TASKS`, while `src/act.py` limits each run to `MAX_ROUNDS = 3`.
 
@@ -25,7 +25,7 @@
 - `tests/test_create_service_task.py`: the unit tests for that room check and the task queue.
 - Not implemented yet: no `docs/state-contract.md`, no `src/memory.py`, no `GET`/`DELETE /me/memory`, no per-session history store, and no `lab6-streaming-state` tag on `main`.
 
-## Week 7 · Supervised Autonomy Loop · [LUKA: date, e.g. 2026-11-27]
+## Week 7 · Supervised Autonomy Loop · 2026-11-27
 
 - **Where I used it**: We have not built `NEEDS_YES` or `confirm()` yet. The closest loop in our repo is `act()` in `src/act.py` (capped at `MAX_ROUNDS = 3` and the 3-call limit in `AGENTS.md`), where `create_service_task` (`tests/test_create_service_task.py`) executes immediately after Gate 2 and Gate 3 pass.
 
