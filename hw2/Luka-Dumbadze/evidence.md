@@ -32,7 +32,7 @@
 
 - **Red run:** https://github.com/Luka-Dumbadze/team-stumaros/actions/runs/45427483208. Result: 5 failed, 167 passed.
 - **Merge state:** `mergeStateStatus: BLOCKED`. The ruleset `main: CI must pass` requires the `test` check.
-- **Merge button:** the exact button text was not saved before the PR was closed, and GitHub's API does not keep it. `gh pr view 5` still reports `mergeStateStatus: BLOCKED`, with both `test` check runs of the `ci` workflow at `FAILURE` (runs 45427464758 and 45427483208). [LUKA: if you have a screenshot, paste the exact button text here.]
+- **Merge button:** the exact button text was not saved before the PR was closed, and GitHub's API does not keep it. `gh pr view 5` still reports `mergeStateStatus: BLOCKED`, with both `test` check runs of the `ci` workflow at `FAILURE` (runs 45427464758 and 45427483208).
 - **Failures:**
   - `tests/test_contracts.py::test_no_contract_names_the_caller`
   - `tests/test_create_service_task.py::test_the_contract_refuses_bad_and_adversarial_arguments[room]`
@@ -62,6 +62,15 @@ Last line of `pytest -q tests` on `main` (`698e6bc`, run locally on 2026-11-27 w
 
 ## Through the MCP door
 
-[LUKA: paste your real Claude Code sentence + create_service_task MCP output here: the client (Claude Code, and the tools `/mcp` listed), the sentence you typed, and the tool calls it made, in order.]
+  **Prompt typed in Claude Code:**
+  > Use the stumaros MCP create_service_task tool to request extra towels from housekeeping. Do not run shell commands or edit files.
+
+  **Tool call and output:**
+  Called `stumaros` (`create_service_task(department="housekeeping", task="Bring extra towels")`):
+  ```json
+  {"room":"204","department":"housekeeping","priority":"normal","task":"Bring extra towels","status":"created"}
+  ```
+
+  The room (`204`) came from `STUMAROS_ROOM` on the server, not from anything I typed, and the hotel code set `priority` to `normal`.
 
 The scripted stdio-client run is under **The MCP door** above.

@@ -14,12 +14,11 @@
 
 ## Week 6 · Session State · [LUKA: date, e.g. 2026-11-27]
 
-**Where I used it:** 
-- **Where I used it:** StumarOS does not have `docs/state-contract.md` or `DELETE /me/memory` yet. Right now, `src/tools.py` validates `X-Room` on each request, hashes it with `room_key()` for `logs/tools.jsonl`, and stores tasks in memory in `SERVICE_TASKS`, while `src/act.py` limits each run to `MAX_ROUNDS = 3`.
+- **Where I used it:** StumarOS does not have `docs/state-contract.md` or `DELETE /me/memory` yet. Right now, `src/tools.py` checks `verified_room()` on each request, hashes it with `room_key()` for `logs/tools.jsonl`, and stores tasks in memory in `SERVICE_TASKS`, while `src/act.py` limits each run to `MAX_ROUNDS = 3`.
 
-- **What I noticed:** Without a proper session store and TTL, a guest has to re-send `X-Room` on every HTTP call, and `SERVICE_TASKS` stays in memory with no automatic cleanup on check-out.
+- **What I noticed:** Without a proper session contract and lifetime, a guest has to re-send `X-Room` on every HTTP call, and `SERVICE_TASKS` has no automatic cleanup when a guest checks out.
 
-- **Do differently:** Next, I would write `docs/state-contract.md` first, store only the hashed room key with a check-out lifetime, and add a `DELETE /me/memory` endpoint that needs no model call.
+- **Do differently:** Next, I would write `docs/state-contract.md` first, store only the hashed room key with a check-out lifetime, and add a `DELETE /me/memory` route that runs without any model call.
 
 *Closest real code in the repo (delete this list before submitting):*
 - `src/tools.py`: `verified_room()` (line 43) checks a claimed room against an active stay today; `room_key()` (line 53) hashes the room for the log; `SERVICE_TASKS` (line 89) is in-memory, so it lasts only as long as the process.
@@ -30,7 +29,7 @@
 
 - **Where I used it**: We have not built `NEEDS_YES` or `confirm()` yet. The closest loop in our repo is `act()` in `src/act.py` (capped at `MAX_ROUNDS = 3` and the 3-call limit in `AGENTS.md`), where `create_service_task` (`tests/test_create_service_task.py`) executes immediately after Gate 2 and Gate 3 pass.
 
-- **What I noticed**: Immediate execution works for non-destructive housekeeping tasks, especially with idempotency and `MAX_OPEN_TASKS = 5`, because repeating a request changes nothing. However, paid or irreversible actions like Mariami's planned `request_late_checkout` (20 GEL) cannot safely run without a human gate.
+- **What I noticed**: Running right after validation works for non-destructive housekeeping requests because `MAX_OPEN_TASKS = 5`, idempotency keep repeats safe, whereas paid or irreversible actions like late checkout (20 GEL) would be risky without human approval.
 
 - **Do differently**: When we add multi-step goals and paid actions, I will move them into `NEEDS_YES` so the loop parks the action and waits for an explicit `confirm()` with an action ID before running.
 
