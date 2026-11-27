@@ -58,3 +58,4 @@ class CreateServiceTask(Contract):
 class MyOpenTasks(Contract):
     """List open service tasks for the caller's own verified room. Reads only; never changes or
     cancels tasks and never shows another room's tasks."""
+    room: str | None = None
