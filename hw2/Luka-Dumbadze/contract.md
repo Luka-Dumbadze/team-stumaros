@@ -1,5 +1,9 @@
 # HW2 · Tool contract · `create_service_task` · Luka-Dumbadze
 
+**Tool:** `create_service_task` · **Owner:** `Luka-Dumbadze` · **Team repo:** https://github.com/Luka-Dumbadze/team-stumaros
+**Code on `main`:** contract class `CreateServiceTask` in `src/contracts.py` line 51 · function in `src/tools.py` line 96 · registry entry in `src/tools.py` line 138 (`TOOLS`) · MCP registration in `src/mcp_server.py` line 53
+**Product pull request:** #4 · merged commit `a471bf3` (implementation commit `519c752`)
+
 *From `Lab-5/templates/tool-contract.md`. Code on `main`: [`src/contracts.py`](../../src/contracts.py) (`CreateServiceTask`, `Department`, `TaskText`), [`src/tools.py`](../../src/tools.py) (`create_service_task`, `ServiceTask`, `SERVICE_TASKS`, `MAX_OPEN_TASKS`, `TOOLS` entry), [`src/pipeline.py`](../../src/pipeline.py) (`is_urgent`), [`src/mcp_server.py`](../../src/mcp_server.py) (`create_service_task`), [`evals/tools/Luka-Dumbadze.yaml`](../../evals/tools/Luka-Dumbadze.yaml). Issue #3 · product pull request #4. Full team section: [`docs/tool-contracts.md`](../../docs/tool-contracts.md).*
 
 **In one sentence, for the model:** File one housekeeping or maintenance request for the guest's own room. Adds a task for staff; never changes or cancels one. The hotel sets the priority from the text (leaks, door, lock and AC faults are urgent), so do not ask the guest for one.
@@ -8,8 +12,8 @@
 |---|---|
 | **Effect** | adds: one task in the in-memory queue `tools.SERVICE_TASKS` (AGENTS.md allows no storage files) |
 | **Undo** | staff close or cancel it at the front desk. There is deliberately no cancel tool |
-| **Idempotent?** | yes: the same department and text again (ignoring case and spacing) returns the open task as `already open` and files nothing |
-| **Offered to** | verified rooms only (`needs_room=True`). A visitor never sees the schema, whether they sent no room or a checked-out, reserved, unknown or junk one |
+| **Idempotent?** | yes: the same department and text again (ignoring case and spacing) returns the open task as `already open` and files nothing. Second identical call (room 204, through `call_tool()` on `main`): `{"room": "204", "department": "housekeeping", "priority": "normal", "task": "Please bring 2 extra towels", "status": "already open"}` |
+| **Offered to** | verified rooms only (`needs_room=True`, `src/tools.py` line 138). A visitor never sees the schema, whether they sent no room or a checked-out, reserved, unknown or junk one |
 | **Identity from** | the session, never an argument. **Function calling** (`POST /act`): the `X-Room` header goes through `verified_room()`. **MCP:** `Annotated[str, Resolve(verified_caller_room)]` reads `STUMAROS_ROOM`. The tool re-checks the stay itself |
 | **Touches** | `tools.SERVICE_TASKS` (append only); `data/active_rooms.json` (read, to verify the stay) |
 | **Must never** | file a task for any room but the caller's, let the model choose the priority, or send anything outside the hotel |
@@ -38,6 +42,13 @@
 | the text names another room | Nothing was filed: the text mentions room 410, and this tool only files tasks for your own room. Remove the other room number, or offer to ask the front desk. |
 | `MAX_OPEN_TASKS = 5` reached | Nothing was filed: this room already has 5 open requests. Do not try again; tell the guest staff are on their way and offer to ask the front desk. |
 | bad arguments | refused before the tool runs: `invalid arguments: <field>: …` |
+
+**The decision I had to make.** In our first triage design, the model could propose any room number, department, and task priority directly in its reply, and we only filtered tasks afterward in `pipeline.py`. For the tool contract, I removed `room`, `priority`, and `front_desk` from `CreateServiceTask` in `src/contracts.py`, leaving only `department` (`housekeeping` or `maintenance`) and bounded `task` text. Now the verified room comes strictly from the server (`X-Room` / `Resolve(verified_caller_room)` in `src/tools.py` and `src/mcp_server.py`), and `is_urgent()` in code sets priority. This prevents prompt injection from targeting another room or spamming arbitrary departments.
+
+*Facts you can point to (delete this list before submitting):*
+- **`room` is not an argument.** `CreateServiceTask` (`src/contracts.py` line 51) has only `department` and `task`. `extra="forbid"` (`src/contracts.py` line 43) refuses anything else. The room comes from the session: `create_service_task(args, room)` in `src/tools.py` line 96, passed in by `src/act.py` line 72, decision `docs/decisions/0005-caller-room-from-the-session.md`. Red-run PR #5 shows what adding it back breaks.
+- **`priority` is not an argument.** `src/tools.py` line 112 sets it with `is_urgent()`; the comment on line 83 cites decision 0001.
+- **`front_desk` is not a department.** `Department` (`src/contracts.py` lines 29–32) allows only `housekeeping` and `maintenance`. The comment on line 28 says `request_late_checkout` covers the front desk.
 
 **Tests and golden cases.** There are 5 golden cases (s1, s2, s3, b1, a1) in `evals/tools/Luka-Dumbadze.yaml`, run in CI by `tests/test_tool_golden.py`. Another 51 unit tests are in `tests/test_create_service_task.py`. The both-doors check is `tests/test_mcp.py::test_both_doors_describe_the_arguments_identically[create_service_task]`. Results and CI links are in [`evidence.md`](evidence.md).
 
