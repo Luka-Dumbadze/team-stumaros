@@ -25,18 +25,18 @@
 
 ## The red run: proof the gate blocks
 
-**Throwaway branch:** `<<BRANCH-NAME, e.g. throwaway/weak-my-open-tasks>>` added one line to `MyOpenTasks` in `src/contracts.py`: `room: str | None = None`, an identity field the model could fill.
+**Throwaway branch:** `throwaway/weak-my-open-tasks` added one line to `MyOpenTasks` in `src/contracts.py`: `room: str | None = None`, an identity field the model could fill.
 
-**Pull request:** #`<<NUMBER>>`, `[THROWAWAY - DO NOT MERGE] Weakened my_open_tasks contract`, into `main`. It was closed without merging and the branch was deleted.
+**Pull request:** #`62`, `[THROWAWAY - DO NOT MERGE] Weakened my_open_tasks contract`, into `main`. It was closed without merging and the branch was deleted.
 
-- **Red run:** `<<URL of the red run, https://github.com/Luka-Dumbadze/team-stumaros/actions/runs/...>>`. Result: 3 failed, 177 passed `<<check the numbers in your own run>>`.
-- **Merge state:** `<<what the Merge button said, or the output of gh pr view <number> --json mergeStateStatus; if GitHub did not block it, say so honestly>>`.
+- **Red run:** `https://github.com/Luka-Dumbadze/team-stumaros/actions/runs/46051437919`. Result: 3 failed, 177 passed `<<check the numbers in your own run>>`.
+- **Merge state:** `Merge button disabled: "All checks have failed, 2 failing checks" (ci / test (pull_request) and ci / test (push), both Required`.
 - **Failures** (the same three I got when I reproduced this locally):
   - `tests/test_contracts.py::test_no_contract_names_the_caller`
   - `tests/test_mcp.py::test_both_doors_describe_the_arguments_identically[my_open_tasks]`
   - `tests/test_tool_golden.py::test_tool_golden_case[UrjuHub:a1]`
 
-**What it showed.** <<IN YOUR OWN WORDS, 2-4 sentences. Facts to build on: adding an optional `room` field made 3 checks fail. Golden case `a1` failed because the weakened contract accepted `room: "410"`, so the call ran and returned `{"room": "204", "tasks": []}` instead of being refused. Unlike `create_service_task`, `my_open_tasks` has no text to scan for other room numbers, so the contract was the only guard on the arguments; the runtime still used the session's room, but the schema now told the model it could choose one.>>
+**What it showed.** Adding one optional `room` field to `MyOpenTasks` made 3 checks fail and GitHub blocked the merge. `test_no_contract_names_the_caller` caught the identity field, the both-doors test caught that the function-calling schema now advertised `room` while the MCP schema did not, and golden case `a1` failed because `room: "410"` was no longer refused: the call ran and returned `{"room": "204", "tasks": []}`. The tool still used the room from the session, so nothing from room 410 leaked, but the contract now told the model it could choose a room, and one later edit that read `args.room` would have exposed another guest's tasks.
 
 ## The green run
 
@@ -48,12 +48,4 @@ Last line of `pytest -q tests` on `main`, run locally on 2026-11-27 with no API 
 180 passed in 2.82s
 ```
 
-## Through the MCP door
 
-  **Prompt typed in Claude Code:**
-  > <<only fill this in if you really ran it, see the note in the chat. Otherwise delete this section.>>
-
-  **Tool call and output:**
-  <<paste the real tool call and its JSON output here>>
-
-The scripted stdio-client run is under **The MCP door** above.
