@@ -2,19 +2,14 @@
 
 *One entry per week: the pattern, one place I saw or used it, one thing I would do differently. Two to three sentences per entry, in my own words: no AI-written text (originality rules apply). `docs/journal/UrjuHub.md` on `main` holds Weeks 1–4; Weeks 5–7 are written here.*
 
-## Week 5 · Tool Contract · <<date>>
+## Week 5 · Tool Contract · 2026-11-27
 
-<<2-3 sentences in your own words. Cover: (1) where you used it: `my_open_tasks`, an empty `MyOpenTasks` contract with no `room` field, room comes from `X-Room` / `STUMAROS_ROOM`; (2) what you noticed: the red run, 3 checks failed when `room` was added; (3) what you would do differently.>>
+I used the Tool Contract pattern in `my_open_tasks` by giving it an empty `MyOpenTasks` contract (`extra="forbid"`) with no `room` field, so the room always comes from the session (`X-Room` or `STUMAROS_ROOM`) instead of the model. When I added `room` to the contract for the red run, three checks failed—even though the function still read room 204 from the session and returned `{"room": "204", "tasks": []}`, the schema was already telling the model it could pick a room, so one future edit reading `args.room` would have exposed another guest's tasks. Next time, I would write the adversarial and contract tests first so any schema leak gets caught before wiring the tool in.
 
-*Closest real code in the repo (delete this list before submitting):*
-- `src/contracts.py`: `MyOpenTasks` (line 58), `Contract` with `extra="forbid"` (line 43).
-- `src/tools.py`: `my_open_tasks` (line 123); `src/mcp_server.py`: `my_open_tasks` (line 59).
-- `evals/tools/UrjuHub.yaml`, product PR #12, your red-run PR.
+## Week 6 · Session State · 2026-11-27
 
-## Week 6 · Session State · <<date>>
+Right now, the repo has no `docs/state-contract.md`, `src/memory.py`, or `DELETE /me/memory`—the only state is the in-memory `SERVICE_TASKS` list in `src/tools.py` that `my_open_tasks` reads. Because it only lives in process memory, open tasks disappear whenever the server restarts and never get cleared when a guest checks out. If I were building this properly, I would tie task state to a guest's active stay and clear or archive it automatically at check-out.
 
-<<2-3 sentences in your own words. Honest facts to build on: the repo has no `docs/state-contract.md`, no `src/memory.py` and no `DELETE /me/memory` yet. The only state is `SERVICE_TASKS` in `src/tools.py` (line 89), in process memory, which `my_open_tasks` reads: it disappears on restart, and tasks are never closed or cleared at check-out.>>
+## Week 7 · Supervised Autonomy Loop · 2026-11-27
 
-## Week 7 · Supervised Autonomy Loop · <<date>>
-
-<<2-3 sentences in your own words. Honest facts to build on: the repo has no `NEEDS_YES` and no `confirm()` yet. The loop in `src/act.py` has `MAX_ROUNDS = 3`. `my_open_tasks` only reads, so it is safe to run without a yes; `request_late_checkout` (20 GEL) is the one that would need approval.>>
+The loop in `src/act.py` caps execution at `MAX_ROUNDS = 3`, though `NEEDS_YES` and `confirm()` are not implemented in the repo yet. Because `my_open_tasks` only reads the caller's own tasks, it is safe to run without asking, while something like `request_late_checkout` (20 GEL) changes state and charges money so it would need a confirmation step first. Going forward, I would tag read-only tools separately from paid or state-changing ones in the contract layer so anything with real side effects always pauses for guest approval.
